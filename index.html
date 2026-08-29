@@ -46,7 +46,7 @@
         }
 
         .brand {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: bold;
             color: var(--accent-blue);
             display: flex;
@@ -56,7 +56,7 @@
 
         .stats-bar {
             display: flex;
-            gap: 15px;
+            gap: 12px;
         }
 
         .stat-item {
@@ -72,7 +72,7 @@
         }
 
         .stat-value {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: bold;
         }
 
@@ -428,6 +428,10 @@
         </div>
         <div class="stats-bar">
             <div class="stat-item">
+                <span class="stat-label">Date</span>
+                <span class="stat-value" id="val-date" style="color: var(--accent-blue)">Y1 M1 D01</span>
+            </div>
+            <div class="stat-item">
                 <span class="stat-label">Capital</span>
                 <span class="stat-value" id="val-cash" style="color: var(--accent-green)">$0</span>
             </div>
@@ -550,9 +554,9 @@
 
         const ITEMS = {
             repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix damaged or broken components.' },
-            recycle: { id: 'recycle', name: 'Recycle Hardware', cost: 0, category: 'tool', desc: 'Scrap hardware/debris for high cash refunds!' },
+            recycle: { id: 'recycle', name: 'Recycle Hardware', cost: 0, category: 'tool', desc: 'Scrap hardware/debris for cash refunds!' },
             upgrade: { id: 'upgrade', name: 'Upgrade Node', cost: 500, category: 'tool', desc: 'Upgrade rack or utility capacity by +50%.' },
-            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component (required to rebuild racks).' },
+            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component.' },
             
             hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector.' },
             
@@ -588,7 +592,12 @@
             spotPrice: 0.12,
             isBlackout: false,
             blackoutTimer: 0,
-            yearTick: 0,
+            
+            // TIME SYSTEM (1 Day = 2 Seconds, 30 Days = 1 Month, 12 Months = 1 Year)
+            day: 1,
+            month: 1,
+            year: 1,
+
             activeContracts: [],
             availableContracts: [],
             executivePerks: { startBonus: 0 },
@@ -621,7 +630,9 @@
             resetCamera();
 
             requestAnimationFrame(gameLoop);
-            setInterval(simulationTick, 2000);
+            
+            // Daily Clock Cycle (Every 2 seconds = 1 Day)
+            setInterval(dailyTick, 2000);
             setInterval(triggerRandomEvents, 12000);
         };
 
@@ -645,6 +656,10 @@
             
             const diffConfig = DIFFICULTY_SETTINGS[state.difficulty];
             state.cash = state.mode === 'scenario_crisis' ? -15000 : (diffConfig.startCash + state.executivePerks.startBonus);
+
+            state.day = 1;
+            state.month = 1;
+            state.year = 1;
 
             state.regionGrid = Array(state.regionGridSize).fill(null).map(() => Array(state.regionGridSize).fill(false));
             state.hallsData = {};
@@ -673,6 +688,7 @@
             document.getElementById('new-game-modal').style.display = 'none';
             setViewMode('region');
             recalculateInfrastructure();
+            updateDateDisplay();
             
             if (state.mode === 'scenario_crisis') {
                 logEvent("CRISIS: Facilities stranded in debt! Enter Sector (2,2) & use RECYCLE TOOL on Decommissioned Clusters to claim cash!", "alert");
@@ -712,7 +728,7 @@
             Object.keys(ITEMS).forEach(key => {
                 const item = ITEMS[key];
                 
-                if (key === 'junk_rack') return; // Hide junk rack from build list
+                if (key === 'junk_rack') return;
                 if (state.viewMode === 'region' && item.category !== 'region' && item.category !== 'tool') return;
                 if (state.viewMode === 'surface' && item.category !== 'surface' && item.category !== 'tool') return;
                 if (state.viewMode === 'utility' && item.category !== 'utility' && item.category !== 'tool') return;
@@ -869,6 +885,11 @@
             entry.innerText = msg;
             log.prepend(entry);
             if (log.children.length > 8) log.removeChild(log.lastChild);
+        }
+
+        function updateDateDisplay() {
+            const d = String(state.day).padStart(2, '0');
+            document.getElementById('val-date').innerText = `Y${state.year} M${state.month} D${d}`;
         }
 
         function gridToScreen(gx, gy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
@@ -1337,7 +1358,6 @@
                     grossRev += c.payout;
                 } else {
                     slaPenalties += c.penalty;
-                    logEvent(`SLA BREACH! Insufficient compute for ${c.client}. Fine incurred!`, "alert");
                 }
             });
 
@@ -1396,8 +1416,26 @@
             }
         }
 
-        function simulationTick() {
-            state.yearTick++;
+        function dailyTick() {
+            state.day++;
+
+            if (state.day > 30) {
+                state.day = 1;
+                state.month++;
+                
+                if (state.month > 12) {
+                    state.month = 1;
+                    state.year++;
+                }
+
+                monthlyFinancialBilling();
+            }
+
+            updateDateDisplay();
+            recalculateInfrastructure();
+        }
+
+        function monthlyFinancialBilling() {
             state.spotPrice = Number((0.08 + Math.random() * 0.10).toFixed(2));
 
             if (state.difficulty === 'hard' && Math.random() < 0.12 && !state.isBlackout) {
@@ -1420,7 +1458,7 @@
                         const s = h.surfaceGrid[x][y];
                         if (s) {
                             if (s.type === 'rd_lab' && !s.damaged) rpTotal += ITEMS.rd_lab.rpGen;
-                            if (state.yearTick % 6 === 0 && ITEMS[s.type].category === 'surface' && s.type !== 'rd_lab' && s.type !== 'junk_rack') {
+                            if (ITEMS[s.type].category === 'surface' && s.type !== 'rd_lab' && s.type !== 'junk_rack') {
                                 s.wear = Math.min(0.8, (s.wear || 0) + 0.03);
                             }
                         }
@@ -1441,7 +1479,7 @@
                 }
             }
 
-            recalculateInfrastructure();
+            logEvent(`Monthly Statement: Net Change ${state.netIncome >= 0 ? '+' : ''}$${state.netIncome.toLocaleString()}`, state.netIncome >= 0 ? 'success' : 'alert');
         }
 
         function triggerRandomEvents() {
@@ -1494,6 +1532,7 @@
                 state = JSON.parse(saveData);
                 document.getElementById('new-game-modal').style.display = 'none';
                 setViewMode(state.viewMode);
+                updateDateDisplay();
                 recalculateInfrastructure();
                 logEvent("Saved game state loaded successfully.", "success");
             } catch (e) {
