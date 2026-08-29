@@ -198,11 +198,7 @@
             flex: 1;
             position: relative;
             background-color: #05070a;
-            cursor: grab;
-        }
-
-        #viewport:active {
-            cursor: grabbing;
+            cursor: crosshair;
         }
 
         canvas {
@@ -314,8 +310,18 @@
             outline: none;
         }
 
-        .select-input:focus {
-            border-color: var(--accent-blue);
+        /* Hover Tooltip Overlay */
+        #tile-tooltip {
+            position: absolute;
+            display: none;
+            pointer-events: none;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--accent-blue);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
     </style>
 </head>
@@ -393,7 +399,7 @@
             </div>
 
             <div>
-                <div class="section-title">Construction Panel</div>
+                <div class="section-title">Construction & Tools Panel</div>
                 <div class="build-grid" id="build-menu"></div>
             </div>
         </div>
@@ -406,8 +412,10 @@
                 <span id="view-mode-text">Regional Map Overview</span>
             </div>
 
+            <div id="tile-tooltip"></div>
+
             <div id="event-log">
-                <div class="log-entry">Facility initialized. Build halls on Regional Map to begin operations.</div>
+                <div class="log-entry">Facility initialized. Select tool & drag line to multi-place!</div>
             </div>
         </div>
     </div>
@@ -429,12 +437,17 @@
         };
 
         const ITEMS = {
+            repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix damaged or broken components.' },
+            upgrade: { id: 'upgrade', name: 'Upgrade Node', cost: 500, category: 'tool', desc: 'Upgrade rack or utility capacity by +50%.' },
             demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component.' },
-            hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector to expand operational space.' },
+            
+            hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector.' },
+            
             server: { id: 'server', name: 'Standard Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, category: 'surface', desc: 'Standard compute rack.' },
-            storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, category: 'surface', desc: 'Low heat, stable capacity revenue.' },
+            storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, category: 'surface', desc: 'Low heat capacity revenue.' },
             ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 3200, powerReq: 40, coolingReq: 35, rev: 1400, category: 'surface', desc: 'High density compute module.' },
             ups: { id: 'ups', name: 'UPS Power Unit', cost: 1200, powerReq: -25, coolingReq: 0, rev: 0, category: 'surface', desc: 'Backup utility power module.' },
+            
             power_plant: { id: 'power_plant', name: 'Substation Hub', cost: 1500, powerGen: 120, category: 'utility', layer: 'power', desc: 'High-voltage intake node.' },
             power_cable: { id: 'power_cable', name: 'Power Line Conduit', cost: 20, category: 'utility', layer: 'power', desc: 'Routes electrical power under grid.' },
             chiller: { id: 'chiller', name: 'HVAC Chiller Unit', cost: 1800, coolingGen: 100, category: 'utility', layer: 'cooling', desc: 'Refrigerant cooling generator.' },
@@ -460,8 +473,12 @@
             uptime: 100,
             panX: 0,
             panY: 0,
-            isDragging: false,
-            dragStart: { x: 0, y: 0 }
+            
+            // Interaction State
+            dragStartTile: null,
+            hoverTile: null,
+            isPanDragging: false,
+            panDragStart: { x: 0, y: 0 }
         };
 
         let canvas, ctx;
@@ -478,7 +495,7 @@
 
             requestAnimationFrame(gameLoop);
             setInterval(simulationTick, 2000);
-            setInterval(triggerRandomEvents, 15000);
+            setInterval(triggerRandomEvents, 12000);
         };
 
         function resetCamera() {
@@ -503,7 +520,7 @@
             document.getElementById('new-game-modal').style.display = 'none';
             setViewMode('region');
             recalculateInfrastructure();
-            logEvent(`Data Center site launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
+            logEvent(`Data Center site launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked.`, "success");
         }
 
         function initializeHallData(rx, ry) {
@@ -512,7 +529,7 @@
             
             state.hallsData[key] = {
                 surfaceGrid: Array(size).fill(null).map(() => Array(size).fill(null)),
-                utilityGrid: Array(size).fill(null).map(() => Array(size).fill(null).map(() => ({ power: false, cooling: false, nodeType: null })))
+                utilityGrid: Array(size).fill(null).map(() => Array(size).fill(null).map(() => ({ power: false, cooling: false, nodeType: null, level: 1, damaged: false })))
             };
         }
 
@@ -528,9 +545,9 @@
             Object.keys(ITEMS).forEach(key => {
                 const item = ITEMS[key];
                 
-                if (state.viewMode === 'region' && item.category !== 'region' && item.id !== 'demolish') return;
-                if (state.viewMode === 'surface' && item.category !== 'surface' && item.id !== 'demolish') return;
-                if (state.viewMode === 'utility' && item.category !== 'utility' && item.id !== 'demolish') return;
+                if (state.viewMode === 'region' && item.category !== 'region' && item.category !== 'tool') return;
+                if (state.viewMode === 'surface' && item.category !== 'surface' && item.category !== 'tool') return;
+                if (state.viewMode === 'utility' && item.category !== 'utility' && item.category !== 'tool') return;
 
                 const card = document.createElement('div');
                 card.className = `build-card ${state.selectedItem === key ? 'selected' : ''}`;
@@ -611,6 +628,27 @@
             return { x: Math.floor(gx), y: Math.floor(gy) };
         }
 
+        function getLineTiles(start, end) {
+            const tiles = [];
+            const dx = Math.abs(end.x - start.x);
+            const dy = Math.abs(end.y - start.y);
+            const sx = start.x < end.x ? 1 : -1;
+            const sy = start.y < end.y ? 1 : -1;
+            let err = dx - dy;
+
+            let cx = start.x;
+            let cy = start.y;
+
+            while (true) {
+                tiles.push({ x: cx, y: cy });
+                if (cx === end.x && cy === end.y) break;
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; cx += sx; }
+                if (e2 < dx) { err += dx; cy += sy; }
+            }
+            return tiles;
+        }
+
         function setupControls() {
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
@@ -625,22 +663,178 @@
                     const maxBound = state.viewMode === 'region' ? state.regionGridSize : state.hallGridSize;
 
                     if (tile.x >= 0 && tile.x < maxBound && tile.y >= 0 && tile.y < maxBound) {
-                        handleTileClick(tile.x, tile.y);
+                        state.dragStartTile = tile;
                     } else {
-                        state.isDragging = true;
-                        state.dragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+                        state.isPanDragging = true;
+                        state.panDragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
                     }
                 }
             });
 
             canvas.addEventListener('mousemove', (e) => {
-                if (state.isDragging) {
-                    state.panX = e.clientX - state.dragStart.x;
-                    state.panY = e.clientY - state.dragStart.y;
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                if (state.isPanDragging) {
+                    state.panX = e.clientX - state.panDragStart.x;
+                    state.panY = e.clientY - state.panDragStart.y;
+                } else {
+                    const scaleX = state.viewMode === 'region' ? 120 : TILE_WIDTH;
+                    const scaleY = state.viewMode === 'region' ? 60 : TILE_HEIGHT;
+                    const tile = screenToGrid(mouseX, mouseY, scaleX, scaleY);
+                    const maxBound = state.viewMode === 'region' ? state.regionGridSize : state.hallGridSize;
+
+                    if (tile.x >= 0 && tile.x < maxBound && tile.y >= 0 && tile.y < maxBound) {
+                        state.hoverTile = tile;
+                        updateTooltip(e.clientX, e.clientY);
+                    } else {
+                        state.hoverTile = null;
+                        document.getElementById('tile-tooltip').style.display = 'none';
+                    }
                 }
             });
 
-            window.addEventListener('mouseup', () => { state.isDragging = false; });
+            window.addEventListener('mouseup', (e) => {
+                if (state.dragStartTile && state.hoverTile) {
+                    applyMultiPlacement(state.dragStartTile, state.hoverTile);
+                }
+                state.dragStartTile = null;
+                state.isPanDragging = false;
+            });
+        }
+
+        function updateTooltip(screenX, screenY) {
+            const tooltip = document.getElementById('tile-tooltip');
+            if (!state.hoverTile) {
+                tooltip.style.display = 'none';
+                return;
+            }
+
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${screenX + 15}px`;
+            tooltip.style.top = `${screenX + 15}px`;
+
+            const { x, y } = state.hoverTile;
+
+            if (state.viewMode === 'region') {
+                const unlocked = state.regionGrid[x] && state.regionGrid[x][y];
+                if (unlocked) {
+                    tooltip.innerHTML = `<strong>Server Hall (${x}, ${y})</strong><br><span style="color:var(--accent-green)">Click to Enter Sector</span>`;
+                } else if (state.selectedItem === 'hall_node') {
+                    const cost = ITEMS.hall_node.cost;
+                    const affordable = state.cash >= cost;
+                    tooltip.innerHTML = `Construct Hall (${x}, ${y})<br>Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${cost}</span>`;
+                } else {
+                    tooltip.innerHTML = `Unconstructed Sector (${x}, ${y})`;
+                }
+                return;
+            }
+
+            // Hall level tooltips
+            const hall = state.hallsData[state.activeHallIndex];
+            if (!hall) return;
+
+            let lineTiles = [state.hoverTile];
+            if (state.dragStartTile && state.selectedItem) {
+                lineTiles = getLineTiles(state.dragStartTile, state.hoverTile);
+            }
+
+            if (state.selectedItem) {
+                const item = ITEMS[state.selectedItem];
+                const totalCost = item.cost * lineTiles.length;
+                const affordable = state.cash >= totalCost;
+
+                tooltip.innerHTML = `
+                    <strong>${item.name} ${lineTiles.length > 1 ? `x${lineTiles.length}` : ''}</strong><br>
+                    Total Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${totalCost}</span><br>
+                    Status: ${affordable ? 'Affordable' : 'Insufficient Cash!'}
+                `;
+            } else {
+                const surf = hall.surfaceGrid[x][y];
+                const util = hall.utilityGrid[x][y];
+                
+                let info = `Tile (${x}, ${y})<br>`;
+                if (surf) {
+                    const damagedStr = surf.damaged ? ' <span style="color:var(--accent-red)">[DAMAGED]</span>' : '';
+                    info += `Surface: ${ITEMS[surf.type].name} (Lvl ${surf.level || 1})${damagedStr}<br>`;
+                }
+                if (util.nodeType) info += `Node: ${ITEMS[util.nodeType].name}<br>`;
+                if (util.power) info += `⚡ Power Line Active<br>`;
+                if (util.cooling) info += `❄️ Cooling Pipe Active<br>`;
+
+                tooltip.innerHTML = info;
+            }
+        }
+
+        function applyMultiPlacement(start, end) {
+            if (state.viewMode === 'region') {
+                handleTileClick(start.x, start.y);
+                return;
+            }
+
+            if (!state.selectedItem) {
+                if (start.x === end.x && start.y === end.y && state.regionGrid[start.x] && state.regionGrid[start.x][start.y]) {
+                    state.activeHallIndex = `${start.x}_${start.y}`;
+                    setViewMode('surface');
+                }
+                return;
+            }
+
+            const line = getLineTiles(start, end);
+            const item = ITEMS[state.selectedItem];
+            const hall = state.hallsData[state.activeHallIndex];
+            if (!hall) return;
+
+            let count = 0;
+
+            line.forEach(t => {
+                const { x, y } = t;
+
+                if (item.id === 'repair') {
+                    const surf = hall.surfaceGrid[x][y];
+                    const util = hall.utilityGrid[x][y];
+                    if ((surf && surf.damaged) || util.damaged) {
+                        if (state.cash >= item.cost) {
+                            state.cash -= item.cost;
+                            if (surf) surf.damaged = false;
+                            util.damaged = false;
+                            count++;
+                        }
+                    }
+                } else if (item.id === 'upgrade') {
+                    const surf = hall.surfaceGrid[x][y];
+                    if (surf && state.cash >= item.cost) {
+                        surf.level = (surf.level || 1) + 1;
+                        state.cash -= item.cost;
+                        count++;
+                    }
+                } else if (item.id === 'demolish') {
+                    if (state.viewMode === 'surface') hall.surfaceGrid[x][y] = null;
+                    else hall.utilityGrid[x][y] = { power: false, cooling: false, nodeType: null, level: 1, damaged: false };
+                    count++;
+                } else if (item.category === 'surface') {
+                    if (!hall.surfaceGrid[x][y] && state.cash >= item.cost) {
+                        hall.surfaceGrid[x][y] = { type: item.id, active: false, level: 1, damaged: false };
+                        state.cash -= item.cost;
+                        count++;
+                    }
+                } else if (item.category === 'utility') {
+                    const util = hall.utilityGrid[x][y];
+                    if (state.cash >= item.cost) {
+                        if (item.layer === 'power') util.power = true;
+                        if (item.layer === 'cooling') util.cooling = true;
+                        if (item.powerGen || item.coolingGen) util.nodeType = item.id;
+                        state.cash -= item.cost;
+                        count++;
+                    }
+                }
+            });
+
+            if (count > 0) {
+                logEvent(`Applied ${item.name} to ${count} tiles.`, "success");
+            }
+            recalculateInfrastructure();
         }
 
         function handleTileClick(x, y) {
@@ -661,48 +855,10 @@
                         state.activeHallIndex = `${x}_${y}`;
                         setViewMode('surface');
                         logEvent(`Viewing Server Hall Sector (${x}, ${y}).`, "info");
-                    } else {
-                        logEvent(`Tile (${x}, ${y}) is empty land. Select 'Construct Server Hall' to build here.`, "info");
                     }
                 }
                 recalculateInfrastructure();
-                return;
             }
-
-            if (!state.selectedItem) return;
-
-            const item = ITEMS[state.selectedItem];
-            const hall = state.hallsData[state.activeHallIndex];
-            if (!hall) return;
-
-            if (item.id === 'demolish') {
-                if (state.viewMode === 'surface') {
-                    hall.surfaceGrid[x][y] = null;
-                } else {
-                    hall.utilityGrid[x][y] = { power: false, cooling: false, nodeType: null };
-                }
-                recalculateInfrastructure();
-                return;
-            }
-
-            if (state.cash < item.cost) {
-                logEvent("Insufficient funds to place item!", "alert");
-                return;
-            }
-
-            if (item.category === 'surface') {
-                if (hall.surfaceGrid[x][y] !== null) return;
-                hall.surfaceGrid[x][y] = { type: item.id, active: false };
-                state.cash -= item.cost;
-            } else if (item.category === 'utility') {
-                const util = hall.utilityGrid[x][y];
-                if (item.layer === 'power') util.power = true;
-                if (item.layer === 'cooling') util.cooling = true;
-                if (item.powerGen || item.coolingGen) util.nodeType = item.id;
-                state.cash -= item.cost;
-            }
-
-            recalculateInfrastructure();
         }
 
         function recalculateInfrastructure() {
@@ -728,14 +884,16 @@
 
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
-                        const node = hall.utilityGrid[x][y].nodeType;
-                        if (node === 'power_plant') {
-                            pSources.push({ x, y });
-                            powerCap += ITEMS.power_plant.powerGen;
-                        }
-                        if (node === 'chiller') {
-                            cSources.push({ x, y });
-                            coolingCap += ITEMS.chiller.coolingGen;
+                        const util = hall.utilityGrid[x][y];
+                        if (!util.damaged) {
+                            if (util.nodeType === 'power_plant') {
+                                pSources.push({ x, y });
+                                powerCap += ITEMS.power_plant.powerGen * (util.level || 1);
+                            }
+                            if (util.nodeType === 'chiller') {
+                                cSources.push({ x, y });
+                                coolingCap += ITEMS.chiller.coolingGen * (util.level || 1);
+                            }
                         }
                     }
                 }
@@ -746,22 +904,24 @@
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
                         const tile = hall.surfaceGrid[x][y];
-                        if (tile) {
+                        if (tile && !tile.damaged) {
                             const item = ITEMS[tile.type];
+                            const lvl = tile.level || 1;
+
                             if (item.category === 'surface' && item.id !== 'ups') {
                                 totalRacks++;
-                                pDraw += item.powerReq || 0;
-                                cDraw += item.coolingReq || 0;
+                                pDraw += (item.powerReq || 0) * lvl;
+                                cDraw += (item.coolingReq || 0) * lvl;
 
                                 if (poweredTiles[x][y] && cooledTiles[x][y]) {
                                     tile.active = true;
                                     operationalRacks++;
-                                    grossRev += (item.rev || 0) * diff.revMult;
+                                    grossRev += (item.rev || 0) * lvl * diff.revMult;
                                 } else {
                                     tile.active = false;
                                 }
                             } else if (item.id === 'ups') {
-                                powerCap += Math.abs(item.powerReq);
+                                powerCap += Math.abs(item.powerReq) * lvl;
                             }
                         }
                     }
@@ -814,7 +974,7 @@
                     if (nx >= 0 && nx < state.hallGridSize && ny >= 0 && ny < state.hallGridSize) {
                         if (!resultMatrix[nx][ny]) {
                             const util = grid[nx][ny];
-                            if ((layerType === 'power' && util.power) || (layerType === 'cooling' && util.cooling) || util.nodeType) {
+                            if (!util.damaged && ((layerType === 'power' && util.power) || (layerType === 'cooling' && util.cooling) || util.nodeType)) {
                                 resultMatrix[nx][ny] = true;
                                 queue.push({ x: nx, y: ny });
                             }
@@ -830,14 +990,32 @@
         }
 
         function triggerRandomEvents() {
-            if (Math.random() < 0.12) {
-                const events = [
-                    { msg: "Global AI Trend! Revenue boosted for ML superclusters.", type: "success" },
-                    { msg: "Regional Power Surge! Backup grid engaged.", type: "alert" },
-                    { msg: "Cooling Maintenance warning: Fluid pressure low.", type: "alert" }
-                ];
-                const evt = events[Math.floor(Math.random() * events.length)];
-                logEvent(evt.msg, evt.type);
+            if (Math.random() < 0.25) {
+                const eventTypes = ['disaster', 'surge', 'maintenance'];
+                const selected = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+
+                const keys = Object.keys(state.hallsData);
+                if (keys.length === 0) return;
+                const randomHallKey = keys[Math.floor(Math.random() * keys.length)];
+                const hall = state.hallsData[randomHallKey];
+
+                const rx = Math.floor(Math.random() * state.hallGridSize);
+                const ry = Math.floor(Math.random() * state.hallGridSize);
+
+                if (selected === 'disaster') {
+                    if (hall.surfaceGrid[rx][ry]) {
+                        hall.surfaceGrid[rx][ry].damaged = true;
+                        logEvent(`DISASTER! Electrical Fire damaged rack at sector ${randomHallKey} (${rx}, ${ry})!`, "alert");
+                    }
+                } else if (selected === 'maintenance') {
+                    if (hall.utilityGrid[rx][ry].nodeType) {
+                        hall.utilityGrid[rx][ry].damaged = true;
+                        logEvent(`PIPE BURST! Sub-utility broken at sector ${randomHallKey} (${rx}, ${ry})! Use Repair Tool!`, "alert");
+                    }
+                } else {
+                    logEvent("Market Surge! High demand boosts computing yield.", "success");
+                }
+                recalculateInfrastructure();
             }
         }
 
@@ -845,7 +1023,7 @@
             try {
                 const saveData = JSON.stringify(state);
                 localStorage.setItem('dct_savegame', saveData);
-                logEvent("Game state successfully saved to local storage.", "success");
+                logEvent("Game state successfully saved.", "success");
             } catch (e) {
                 logEvent("Failed to save game state.", "alert");
             }
@@ -882,7 +1060,31 @@
                 }
             }
 
+            drawDragPreview();
             requestAnimationFrame(gameLoop);
+        }
+
+        function drawDragPreview() {
+            if (!state.dragStartTile || !state.hoverTile || !state.selectedItem || state.viewMode === 'region') return;
+
+            const line = getLineTiles(state.dragStartTile, state.hoverTile);
+            const item = ITEMS[state.selectedItem];
+            const affordable = state.cash >= item.cost * line.length;
+
+            line.forEach(t => {
+                const pos = gridToScreen(t.x, t.y);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
+                ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                ctx.closePath();
+
+                ctx.fillStyle = affordable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+                ctx.fill();
+                ctx.strokeStyle = affordable ? '#10b981' : '#ef4444';
+                ctx.stroke();
+            });
         }
 
         function drawRegionMap() {
@@ -954,14 +1156,16 @@
                     const pos = gridToScreen(x, y);
 
                     if (tile) {
-                        const h = 24;
+                        const h = 24 + ((tile.level || 1) - 1) * 6;
                         let topColor = '#3b82f6', sideColor = '#1d4ed8';
 
                         if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
                         if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
                         if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
 
-                        if (!tile.active && tile.type !== 'ups') {
+                        if (tile.damaged) {
+                            topColor = '#ef4444'; sideColor = '#991b1b';
+                        } else if (!tile.active && tile.type !== 'ups') {
                             topColor = '#4b5563'; sideColor = '#1f2937';
                         }
 
@@ -1004,7 +1208,7 @@
 
                     if (util.power) {
                         ctx.beginPath();
-                        ctx.strokeStyle = '#f59e0b';
+                        ctx.strokeStyle = util.damaged ? '#ef4444' : '#f59e0b';
                         ctx.lineWidth = 4;
                         ctx.moveTo(pos.x - 10, pos.y + TILE_HEIGHT / 2);
                         ctx.lineTo(pos.x + 10, pos.y + TILE_HEIGHT / 2);
@@ -1013,7 +1217,7 @@
 
                     if (util.cooling) {
                         ctx.beginPath();
-                        ctx.strokeStyle = '#06b6d4';
+                        ctx.strokeStyle = util.damaged ? '#ef4444' : '#06b6d4';
                         ctx.lineWidth = 4;
                         ctx.moveTo(pos.x, pos.y + TILE_HEIGHT / 2 - 6);
                         ctx.lineTo(pos.x, pos.y + TILE_HEIGHT / 2 + 6);
@@ -1023,7 +1227,7 @@
                     if (util.nodeType) {
                         ctx.beginPath();
                         ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 10, 0, Math.PI * 2);
-                        ctx.fillStyle = util.nodeType === 'power_plant' ? '#f59e0b' : '#3b82f6';
+                        ctx.fillStyle = util.damaged ? '#ef4444' : (util.nodeType === 'power_plant' ? '#f59e0b' : '#3b82f6');
                         ctx.fill(); ctx.stroke();
                     }
                 }
