@@ -57,6 +57,7 @@
         .stats-bar {
             display: flex;
             gap: 12px;
+            align-items: center;
         }
 
         .stat-item {
@@ -74,6 +75,46 @@
         .stat-value {
             font-size: 0.9rem;
             font-weight: bold;
+        }
+
+        /* Time Controls Styling */
+        .time-controls {
+            display: flex;
+            gap: 4px;
+            background: #0d131c;
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+            margin-right: 8px;
+        }
+
+        .time-btn {
+            background: #18202c;
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-btn:hover {
+            background: #253346;
+            border-color: var(--accent-blue);
+        }
+
+        .time-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .time-btn.paused {
+            background: var(--accent-red);
+            color: white;
+            border-color: var(--accent-red);
         }
 
         #main-container {
@@ -427,6 +468,13 @@
             DATA CENTER TYCOON
         </div>
         <div class="stats-bar">
+            <div class="time-controls">
+                <button class="time-btn" id="btn-pause" onclick="setSpeed(0)">⏸ PAUSE</button>
+                <button class="time-btn active" id="btn-1x" onclick="setSpeed(1)">1x</button>
+                <button class="time-btn" id="btn-2x" onclick="setSpeed(2)">2x</button>
+                <button class="time-btn" id="btn-3x" onclick="setSpeed(3)">3x</button>
+            </div>
+
             <div class="stat-item">
                 <span class="stat-label">Date</span>
                 <span class="stat-value" id="val-date" style="color: var(--accent-blue)">Y1 M1 D01</span>
@@ -593,10 +641,11 @@
             isBlackout: false,
             blackoutTimer: 0,
             
-            // TIME SYSTEM (1 Day = 2 Seconds, 30 Days = 1 Month, 12 Months = 1 Year)
+            // TIME SYSTEM (1 Day Default = 1000ms = 1s)
             day: 1,
             month: 1,
             year: 1,
+            gameSpeed: 1, // 0 = Pause, 1 = 1x (1000ms), 2 = 2x (400ms), 3 = 3x (100ms)
 
             activeContracts: [],
             availableContracts: [],
@@ -618,6 +667,8 @@
         };
 
         let canvas, ctx;
+        let dayTimer = null;
+        let eventTimer = null;
 
         window.onload = () => {
             canvas = document.getElementById('gameCanvas');
@@ -631,10 +682,44 @@
 
             requestAnimationFrame(gameLoop);
             
-            // Daily Clock Cycle (Every 2 seconds = 1 Day)
-            setInterval(dailyTick, 2000);
-            setInterval(triggerRandomEvents, 12000);
+            // Start Default Time Cycle (1x speed = 1000ms per day)
+            restartTimers();
         };
+
+        function setSpeed(speedLevel) {
+            state.gameSpeed = speedLevel;
+            
+            ['btn-pause', 'btn-1x', 'btn-2x', 'btn-3x'].forEach(id => {
+                document.getElementById(id).classList.remove('active', 'paused');
+            });
+
+            if (speedLevel === 0) {
+                document.getElementById('btn-pause').classList.add('paused');
+                logEvent("Simulation PAUSED. Actions are locked until resumed.", "alert");
+            } else if (speedLevel === 1) {
+                document.getElementById('btn-1x').classList.add('active');
+            } else if (speedLevel === 2) {
+                document.getElementById('btn-2x').classList.add('active');
+            } else if (speedLevel === 3) {
+                document.getElementById('btn-3x').classList.add('active');
+            }
+
+            restartTimers();
+        }
+
+        function restartTimers() {
+            if (dayTimer) clearInterval(dayTimer);
+            if (eventTimer) clearInterval(eventTimer);
+
+            if (state.gameSpeed === 0) return; // Completely paused
+
+            let dayInterval = 1000; // 1x Speed = 1 day / second
+            if (state.gameSpeed === 2) dayInterval = 400;  // 2x Speed = 0.4s / day
+            if (state.gameSpeed === 3) dayInterval = 100;  // 3x Speed = 0.1s / day
+
+            dayTimer = setInterval(dailyTick, dayInterval);
+            eventTimer = setInterval(triggerRandomEvents, dayInterval * 12);
+        }
 
         function resetCamera() {
             state.panX = canvas.width / 2;
@@ -671,13 +756,11 @@
             if (state.mode === 'scenario_crisis') {
                 const h = state.hallsData['2_2'];
                 
-                // Spawn 4 salvageable junk clusters worth $5,000 each
                 h.surfaceGrid[2][2] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
                 h.surfaceGrid[2][3] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
                 h.surfaceGrid[3][2] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
                 h.surfaceGrid[3][3] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
 
-                // Pre-wire utility conduits
                 for (let i = 0; i < 6; i++) {
                     h.utilityGrid[i][2].power = true;
                     h.utilityGrid[i][2].cooling = true;
@@ -689,6 +772,7 @@
             setViewMode('region');
             recalculateInfrastructure();
             updateDateDisplay();
+            setSpeed(1);
             
             if (state.mode === 'scenario_crisis') {
                 logEvent("CRISIS: Facilities stranded in debt! Enter Sector (2,2) & use RECYCLE TOOL on Decommissioned Clusters to claim cash!", "alert");
@@ -737,6 +821,10 @@
                 const card = document.createElement('div');
                 card.className = `build-card ${state.selectedItem === key ? 'selected' : ''} ${isLocked ? 'locked' : ''}`;
                 card.onclick = () => {
+                    if (state.gameSpeed === 0) {
+                        logEvent("Unpause simulation to perform operations!", "alert");
+                        return;
+                    }
                     if (!isLocked) selectTool(key);
                 };
 
@@ -761,6 +849,7 @@
         }
 
         function selectTool(key) {
+            if (state.gameSpeed === 0) return;
             state.selectedItem = state.selectedItem === key ? null : key;
             buildMenuUI();
         }
@@ -803,6 +892,10 @@
         }
 
         function acceptContract(idx) {
+            if (state.gameSpeed === 0) {
+                logEvent("Cannot accept contracts while paused!", "alert");
+                return;
+            }
             const c = state.availableContracts.splice(idx, 1)[0];
             state.activeContracts.push(c);
             renderSLABoard();
@@ -829,6 +922,10 @@
         }
 
         function unlockTech(key) {
+            if (state.gameSpeed === 0) {
+                logEvent("Cannot research while paused!", "alert");
+                return;
+            }
             const t = TECH_TREE[key];
             if (state.rp >= t.costRP) {
                 state.rp -= t.costRP;
@@ -931,6 +1028,11 @@
 
         function setupControls() {
             canvas.addEventListener('mousedown', (e) => {
+                if (state.gameSpeed === 0 && e.button === 0 && state.selectedItem) {
+                    logEvent("Simulation PAUSED! Unpause to perform actions.", "alert");
+                    return;
+                }
+
                 if (e.button === 0) {
                     const rect = canvas.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
@@ -977,7 +1079,11 @@
 
             window.addEventListener('mouseup', (e) => {
                 if (state.dragStartTile && state.hoverTile) {
-                    applyMultiPlacement(state.dragStartTile, state.hoverTile);
+                    if (state.gameSpeed === 0 && state.selectedItem) {
+                        logEvent("Simulation PAUSED! Cannot alter layout.", "alert");
+                    } else {
+                        applyMultiPlacement(state.dragStartTile, state.hoverTile);
+                    }
                 }
                 state.dragStartTile = null;
                 state.isPanDragging = false;
@@ -1158,6 +1264,8 @@
         }
 
         function applyMultiPlacement(start, end) {
+            if (state.gameSpeed === 0) return;
+
             if (state.viewMode === 'region') {
                 handleTileClick(start.x, start.y);
                 return;
@@ -1417,6 +1525,8 @@
         }
 
         function dailyTick() {
+            if (state.gameSpeed === 0) return;
+
             state.day++;
 
             if (state.day > 30) {
@@ -1483,6 +1593,8 @@
         }
 
         function triggerRandomEvents() {
+            if (state.gameSpeed === 0) return;
+
             if (Math.random() < 0.25) {
                 const eventTypes = ['disaster', 'surge', 'maintenance'];
                 const selected = eventTypes[Math.floor(Math.random() * eventTypes.length)];
@@ -1534,6 +1646,7 @@
                 setViewMode(state.viewMode);
                 updateDateDisplay();
                 recalculateInfrastructure();
+                setSpeed(state.gameSpeed);
                 logEvent("Saved game state loaded successfully.", "success");
             } catch (e) {
                 logEvent("Corrupted save file detected.", "alert");
@@ -1541,7 +1654,9 @@
         }
 
         function gameLoop() {
-            state.animTimer += 0.05;
+            if (state.gameSpeed > 0) {
+                state.animTimer += 0.05 * state.gameSpeed;
+            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (state.viewMode === 'region') {
@@ -1565,7 +1680,7 @@
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
 
-            if (state.dragStartTile && state.selectedItem) {
+            if (state.dragStartTile && state.selectedItem && state.gameSpeed > 0) {
                 const line = getLineTiles(state.dragStartTile, state.hoverTile);
                 const item = ITEMS[state.selectedItem];
 
@@ -1774,7 +1889,6 @@
                             topColor = '#4b5563'; sideColor = '#1f2937';
                         }
 
-                        // Render 3D Isometric Extruded Box
                         ctx.beginPath();
                         ctx.moveTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
                         ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
@@ -1811,7 +1925,7 @@
                             ctx.fillText(`${Math.round(tile.wear * 100)}% wear`, pos.x, pos.y - h - 4);
                         }
 
-                        if (tile.active && !tile.damaged) {
+                        if (tile.active && !tile.damaged && state.gameSpeed > 0) {
                             const pulse = Math.sin(state.animTimer * 5) * 0.5 + 0.5;
                             ctx.fillStyle = `rgba(52, 211, 153, ${0.4 + pulse * 0.6})`;
                             ctx.fillRect(pos.x - 4, pos.y + TILE_HEIGHT / 2 - h + 6, 3, 3);
@@ -1839,7 +1953,7 @@
                         const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'power');
                         drawConnectedPipe(pos.x + pOffX, pos.y + TILE_HEIGHT / 2 + pOffY, neighbors, util.damaged ? '#ef4444' : '#f59e0b', util.damaged ? '#991b1b' : '#b45309');
                         
-                        if (!util.damaged) {
+                        if (!util.damaged && state.gameSpeed > 0) {
                             const flow = (state.animTimer * 20) % 20;
                             ctx.fillStyle = '#fde68a';
                             ctx.beginPath();
@@ -1852,7 +1966,7 @@
                         const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'cooling');
                         drawConnectedPipe(pos.x + cOffX, pos.y + TILE_HEIGHT / 2 + cOffY, neighbors, util.damaged ? '#ef4444' : '#06b6d4', util.damaged ? '#991b1b' : '#0891b2');
 
-                        if (!util.damaged) {
+                        if (!util.damaged && state.gameSpeed > 0) {
                             const flow = (state.animTimer * 15) % 20;
                             ctx.fillStyle = '#a5f3fc';
                             ctx.beginPath();
