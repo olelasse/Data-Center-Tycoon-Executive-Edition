@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Center Tycoon</title>
+    <style>
+        :root {
+            --bg-dark: #0a0d12;
+            --panel-bg: #121820;
+            --panel-border: #1f2937;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #header {
+            background-color: var(--panel-bg);
+            border-bottom: 2px solid var(--panel-border);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        #main-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 320px;
+            background-color: var(--panel-bg);
+            border-right: 2px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            padding: 15px;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 4px;
+        }
+
+        .view-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn {
+            background-color: #1f293d;
+            border: 1px solid #374151;
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background-color: #2d3748;
+            border-color: var(--accent-blue);
+        }
+
+        .btn.active {
+            background-color: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .build-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .build-card {
+            background: #18202c;
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .build-card:hover {
+            border-color: var(--accent-blue);
+            background: #1e293b;
+        }
+
+        .build-card.selected {
+            border-color: var(--accent-green);
+            background: #142824;
+        }
+
+        .build-card-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .build-card-cost {
+            color: var(--accent-green);
+        }
+
+        .build-card-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .build-card-stats {
+            display: flex;
+            gap: 10px;
+            font-size: 0.7rem;
+            margin-top: 6px;
+            color: #d1d5db;
+        }
+
+        #viewport {
+            flex: 1;
+            position: relative;
+            background-color: #05070a;
+            cursor: grab;
+        }
+
+        #viewport:active {
+            cursor: grabbing;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #event-log {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 320px;
+            max-height: 150px;
+            background: rgba(18, 24, 32, 0.85);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(4px);
+            border-radius: 4px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            pointer-events: none;
+        }
+
+        .log-entry {
+            font-size: 0.75rem;
+            padding: 4px 6px;
+            border-radius: 2px;
+            background: rgba(0,0,0,0.3);
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .log-entry.alert {
+            border-left-color: var(--accent-red);
+            color: #fca5a5;
+        }
+
+        .log-entry.success {
+            border-left-color: var(--accent-green);
+        }
+
+        .overlay-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(18, 24, 32, 0.9);
+            border: 1px solid var(--panel-border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .indicator-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+        }
+
+        .pipe-status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div class="brand">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 16V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8m16 0H4m16 0a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2m4-4h.01M8 12h.01"/></svg>
+            DATA CENTER TYCOON
+        </div>
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Capital</span>
+                <span class="stat-value" id="val-cash" style="color: var(--accent-green)">$50,000</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Net Monthly</span>
+                <span class="stat-value" id="val-net">$0/mo</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Power Supply</span>
+                <span class="stat-value" id="val-power">0/0 kW</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Cooling Load</span>
+                <span class="stat-value" id="val-cooling">0/0 BTU</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Uptime</span>
+                <span class="stat-value" id="val-uptime" style="color: var(--accent-blue)">100%</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-container">
+        <div id="sidebar">
+            <div>
+                <div class="section-title">View Mode</div>
+                <div class="view-controls">
+                    <button class="btn active" id="btn-view-surface" onclick="setViewMode('surface')">Surface</button>
+                    <button class="btn" id="btn-view-utility" onclick="setViewMode('utility')">Sub-Grid</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Infrastructure Construction</div>
+                <div class="build-grid" id="build-menu">
+                    </div>
+            </div>
+
+            <div>
+                <div class="section-title">Facility Expansion</div>
+                <button class="btn" style="width: 100%; text-align: left; justify-content: space-between;" onclick="expandGrid()">
+                    <span>Expand Floor Grid (+2x2)</span>
+                    <span id="expand-cost" style="color: var(--accent-green);">$15,000</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="viewport">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div class="overlay-indicator">
+                <div class="indicator-dot" id="view-dot"></div>
+                <span id="view-mode-text">Surface Infrastructure View</span>
+            </div>
+
+            <div id="event-log">
+                <div class="log-entry">Facility initialised. Connect power & cooling utilities to function.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTS & CONFIGS ---
+        const TILE_WIDTH = 64;
+        const TILE_HEIGHT = 32;
+
+        const ITEMS = {
+            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile or utility layer component.' },
+            server: { id: 'server', name: 'Standard Server Rack', cost: 1200, powerReq: 15, coolingReq: 12, rev: 180, category: 'surface', desc: 'Baseline compute power rack.' },
+            storage: { id: 'storage', name: 'Data Storage Array', cost: 800, powerReq: 8, coolingReq: 5, rev: 110, category: 'surface', desc: 'High capacity, low power/heat output.' },
+            ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 4500, powerReq: 60, coolingReq: 55, rev: 850, category: 'surface', desc: 'Extreme compute revenue. Massive utility draw.' },
+            ups: { id: 'ups', name: 'UPS Power Battery', cost: 2000, powerReq: -40, coolingReq: 0, rev: 0, category: 'surface', desc: 'Provides emergency power backup buffer.' },
+            
+            power_plant: { id: 'power_plant', name: 'Substation Transformer', cost: 3000, powerGen: 150, category: 'utility', layer: 'power', desc: 'High-voltage intake station for primary power.' },
+            power_cable: { id: 'power_cable', name: 'Power Line Conduit', cost: 50, category: 'utility', layer: 'power', desc: 'Routes electrical power under the floor.' },
+            chiller: { id: 'chiller', name: 'HVAC Water Chiller', cost: 3500, coolingGen: 120, category: 'utility', layer: 'cooling', desc: 'Central cooling fluid distribution hub.' },
+            cool_pipe: { id: 'cool_pipe', name: 'Cooling Pipe Network', cost: 75, category: 'utility', layer: 'cooling', desc: 'Circulates liquid refrigerant to server rows.' }
+        };
+
+        // --- GAME STATE ---
+        let state = {
+            cash: 50000,
+            gridSize: 12,
+            viewMode: 'surface', // 'surface' or 'utility'
+            selectedItem: null,
+            
+            // Grid Layers (gridSize x gridSize)
+            // Surface: { type: string, active: bool }
+            surfaceGrid: [],
+            // Utility: { power: bool, cooling: bool, type: string }
+            utilityGrid: [],
+            
+            // Metrics
+            powerProduced: 0,
+            powerConsumed: 0,
+            coolingProduced: 0,
+            coolingConsumed: 0,
+            netIncome: 0,
+            uptime: 100,
+
+            // Camera Isometric Offset
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            isDragging: false,
+            dragStart: { x: 0, y: 0 }
+        };
+
+        // UI & Canvas Refs
+        let canvas, ctx;
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            initGrids(state.gridSize);
+            buildMenuUI();
+            setupControls();
+
+            // Center Camera
+            state.panX = canvas.width / 2;
+            state.panY = canvas.height / 4;
+
+            // Start Main Simulation Loop
+            requestAnimationFrame(gameLoop);
+            setInterval(simulationTick, 2000); // Economic & status tick every 2s
+            setInterval(triggerRandomEvents, 15000); // Events every 15s
+        };
+
+        function initGrids(size) {
+            state.surfaceGrid = Array(size).fill(null).map(() => Array(size).fill(null));
+            state.utilityGrid = Array(size).fill(null).map(() => Array(size).fill(null).map(() => ({ power: false, cooling: false, nodeType: null })));
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        // --- UI & CONTROL BUILDERS ---
+        function buildMenuUI() {
+            const menu = document.getElementById('build-menu');
+            menu.innerHTML = '';
+
+            Object.keys(ITEMS).forEach(key => {
+                const item = ITEMS[key];
+                const card = document.createElement('div');
+                card.className = `build-card ${state.selectedItem === key ? 'selected' : ''}`;
+                card.onclick = () => selectTool(key);
+
+                let statsText = '';
+                if (item.powerReq) statsText += `⚡ ${item.powerReq}kW `;
+                if (item.powerGen) statsText += `⚡ +${item.powerGen}kW `;
+                if (item.coolingReq) statsText += `❄️ ${item.coolingReq}BTU `;
+                if (item.coolingGen) statsText += `❄️ +${item.coolingGen}BTU `;
+                if (item.rev) statsText += `💵 +$${item.rev}/m `;
+
+                card.innerHTML = `
+                    <div class="build-card-title">
+                        <span>${item.name}</span>
+                        <span class="build-card-cost">$${item.cost}</span>
+                    </div>
+                    <div class="build-card-desc">${item.desc}</div>
+                    <div class="build-card-stats">${statsText}</div>
+                `;
+                menu.appendChild(card);
+            });
+        }
+
+        function selectTool(key) {
+            state.selectedItem = state.selectedItem === key ? null : key;
+            buildMenuUI();
+        }
+
+        function setViewMode(mode) {
+            state.viewMode = mode;
+            document.getElementById('btn-view-surface').className = `btn ${mode === 'surface' ? 'active' : ''}`;
+            document.getElementById('btn-view-utility').className = `btn ${mode === 'utility' ? 'active' : ''}`;
+            
+            const dot = document.getElementById('view-dot');
+            const text = document.getElementById('view-mode-text');
+            
+            if (mode === 'surface') {
+                dot.style.backgroundColor = 'var(--accent-green)';
+                text.innerText = 'Surface Operations Grid';
+            } else {
+                dot.style.backgroundColor = 'var(--accent-blue)';
+                text.innerText = 'Sub-Floor Utility Infrastructure';
+            }
+        }
+
+        function logEvent(msg, type = 'info') {
+            const log = document.getElementById('event-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerText = msg;
+            log.prepend(entry);
+            if (log.children.length > 8) log.removeChild(log.lastChild);
+        }
+
+        // --- ENGINE LOGIC & ISOMETRIC MATH ---
+        function gridToScreen(gx, gy) {
+            const screenX = (gx - gy) * (TILE_WIDTH / 2) + state.panX;
+            const screenY = (gx + gy) * (TILE_HEIGHT / 2) + state.panY;
+            return { x: screenX, y: screenY };
+        }
+
+        function screenToGrid(sx, sy) {
+            const adjX = sx - state.panX;
+            const adjY = sy - state.panY;
+
+            const gx = (adjX / (TILE_WIDTH / 2) + adjY / (TILE_HEIGHT / 2)) / 2;
+            const gy = (adjY / (TILE_HEIGHT / 2) - adjX / (TILE_WIDTH / 2)) / 2;
+
+            return { x: Math.floor(gx), y: Math.floor(gy) };
+        }
+
+        // --- CONTROLS HANDLER ---
+        function setupControls() {
+            let activeHover = { x: -1, y: -1 };
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) { // Left Click
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    const tile = screenToGrid(mouseX, mouseY);
+                    if (isValidTile(tile.x, tile.y)) {
+                        handleTileClick(tile.x, tile.y);
+                    } else {
+                        state.isDragging = true;
+                        state.dragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+                    }
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (state.isDragging) {
+                    state.panX = e.clientX - state.dragStart.x;
+                    state.panY = e.clientY - state.dragStart.y;
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                state.isDragging = false;
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                // Zoom capability can be added here if expanded
+            });
+        }
+
+        function isValidTile(x, y) {
+            return x >= 0 && x < state.gridSize && y >= 0 && y < state.gridSize;
+        }
+
+        function handleTileClick(x, y) {
+            if (!state.selectedItem) return;
+
+            const item = ITEMS[state.selectedItem];
+
+            if (item.id === 'demolish') {
+                if (state.viewMode === 'surface') {
+                    state.surfaceGrid[x][y] = null;
+                } else {
+                    state.utilityGrid[x][y] = { power: false, cooling: false, nodeType: null };
+                }
+                recalculateInfrastructure();
+                return;
+            }
+
+            if (state.cash < item.cost) {
+                logEvent("Insufficient capital to construct this component!", "alert");
+                return;
+            }
+
+            // Placement validation
+            if (item.category === 'surface') {
+                if (state.surfaceGrid[x][y] !== null) return;
+                state.surfaceGrid[x][y] = { type: item.id, active: false };
+                state.cash -= item.cost;
+            } else if (item.category === 'utility') {
+                const util = state.utilityGrid[x][y];
+                if (item.layer === 'power') util.power = true;
+                if (item.layer === 'cooling') util.cooling = true;
+                if (item.powerGen || item.coolingGen) util.nodeType = item.id;
+                state.cash -= item.cost;
+            }
+
+            recalculateInfrastructure();
+        }
+
+        function expandGrid() {
+            const cost = state.gridSize * 1250;
+            if (state.cash < cost) {
+                logEvent("Cannot afford grid expansion!", "alert");
+                return;
+            }
+            state.cash -= cost;
+            state.gridSize += 2;
+            
+            // Re-initialize expanded space
+            const newSurf = Array(state.gridSize).fill(null).map(() => Array(state.gridSize).fill(null));
+            const newUtil = Array(state.gridSize).fill(null).map(() => Array(state.gridSize).fill(null).map(() => ({ power: false, cooling: false, nodeType: null })));
+
+            for (let r = 0; r < state.gridSize - 2; r++) {
+                for (let c = 0; c < state.gridSize - 2; c++) {
+                    newSurf[r][c] = state.surfaceGrid[r][c];
+                    newUtil[r][c] = state.utilityGrid[r][c];
+                }
+            }
+            state.surfaceGrid = newSurf;
+            state.utilityGrid = newUtil;
+
+            document.getElementById('expand-cost').innerText = `$${state.gridSize * 1250}`;
+            logEvent(`Facility area expanded to ${state.gridSize}x${state.gridSize} rows.`, "success");
+        }
+
+        // --- SIMULATION & INFRASTRUCTURE GRAPH BREADTH-FIRST-SEARCH ---
+        function recalculateInfrastructure() {
+            // Reset grid states
+            let powerCap = 0;
+            let coolingCap = 0;
+            let pDraw = 0;
+            let cDraw = 0;
+
+            // Graph reachability sets
+            const poweredTiles = Array(state.gridSize).fill(null).map(() => Array(state.gridSize).fill(false));
+            const cooledTiles = Array(state.gridSize).fill(null).map(() => Array(state.gridSize).fill(false));
+
+            // Find all Power / Cooling Sources
+            const powerSources = [];
+            const coolingSources = [];
+
+            for (let x = 0; x < state.gridSize; x++) {
+                for (let y = 0; y < state.gridSize; y++) {
+                    const node = state.utilityGrid[x][y].nodeType;
+                    if (node === 'power_plant') {
+                        powerSources.push({ x, y });
+                        powerCap += ITEMS.power_plant.powerGen;
+                    }
+                    if (node === 'chiller') {
+                        coolingSources.push({ x, y });
+                        coolingCap += ITEMS.chiller.coolingGen;
+                    }
+                }
+            }
+
+            // BFS for Power Connectivity
+            const pQueue = [...powerSources];
+            pQueue.forEach(p => poweredTiles[p.x][p.y] = true);
+
+            while (pQueue.length > 0) {
+                const { x, y } = pQueue.shift();
+                const neighbors = getValidNeighbors(x, y);
+
+                neighbors.forEach(n => {
+                    if (!poweredTiles[n.x][n.y] && (state.utilityGrid[n.x][n.y].power || state.utilityGrid[n.x][n.y].nodeType)) {
+                        poweredTiles[n.x][n.y] = true;
+                        pQueue.push(n);
+                    }
+                });
+            }
+
+            // BFS for Cooling Connectivity
+            const cQueue = [...coolingSources];
+            cQueue.forEach(c => cooledTiles[c.x][c.y] = true);
+
+            while (cQueue.length > 0) {
+                const { x, y } = cQueue.shift();
+                const neighbors = getValidNeighbors(x, y);
+
+                neighbors.forEach(n => {
+                    if (!cooledTiles[n.x][n.y] && (state.utilityGrid[n.x][n.y].cooling || state.utilityGrid[n.x][n.y].nodeType)) {
+                        cooledTiles[n.x][n.y] = true;
+                        cQueue.push(n);
+                    }
+                });
+            }
+
+            // Update Surface Racks status based on Utility Grid Coverage
+            let operationalRacks = 0;
+            let totalRacks = 0;
+
+            for (let x = 0; x < state.gridSize; x++) {
+                for (let y = 0; y < state.gridSize; y++) {
+                    const tile = state.surfaceGrid[x][y];
+                    if (tile) {
+                        const item = ITEMS[tile.type];
+                        if (item.category === 'surface' && item.id !== 'ups') {
+                            totalRacks++;
+                            pDraw += item.powerReq || 0;
+                            cDraw += item.coolingReq || 0;
+
+                            // Tile MUST have power pipe + cooling pipe routed directly under it AND total capacity must fit
+                            const isPowered = poweredTiles[x][y];
+                            const isCooled = cooledTiles[x][y];
+
+                            if (isPowered && isCooled) {
+                                tile.active = true;
+                                operationalRacks++;
+                            } else {
+                                tile.active = false;
+                            }
+                        } else if (item.id === 'ups') {
+                            powerCap += Math.abs(item.powerReq);
+                        }
+                    }
+                }
+            }
+
+            state.powerProduced = powerCap;
+            state.powerConsumed = pDraw;
+            state.coolingProduced = coolingCap;
+            state.coolingConsumed = cDraw;
+
+            // Calculations Check: Overload Penalties
+            let efficiency = 1.0;
+            if (pDraw > powerCap) efficiency -= 0.5;
+            if (cDraw > coolingCap) efficiency -= 0.4;
+
+            state.uptime = Math.max(0, Math.round((totalRacks > 0 ? (operationalRacks / totalRacks) : 1.0) * efficiency * 100));
+
+            // Financial Calculations
+            let grossRev = 0;
+            for (let x = 0; x < state.gridSize; x++) {
+                for (let y = 0; y < state.gridSize; y++) {
+                    const tile = state.surfaceGrid[x][y];
+                    if (tile && tile.active) {
+                        grossRev += ITEMS[tile.type].rev || 0;
+                    }
+                }
+            }
+
+            const maintenanceCosts = (pDraw * 2) + (cDraw * 1.5) + (state.gridSize * 100);
+            state.netIncome = Math.round((grossRev * (state.uptime / 100)) - maintenanceCosts);
+
+            // Update UI Counters
+            document.getElementById('val-cash').innerText = `$${state.cash.toLocaleString()}`;
+            document.getElementById('val-net').innerText = `$${state.netIncome}/mo`;
+            document.getElementById('val-net').style.color = state.netIncome >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            
+            document.getElementById('val-power').innerText = `${pDraw}/${powerCap} kW`;
+            document.getElementById('val-power').style.color = pDraw > powerCap ? 'var(--accent-red)' : 'var(--text-main)';
+            
+            document.getElementById('val-cooling').innerText = `${cDraw}/${coolingCap} BTU`;
+            document.getElementById('val-cooling').style.color = cDraw > coolingCap ? 'var(--accent-red)' : 'var(--text-main)';
+            
+            document.getElementById('val-uptime').innerText = `${state.uptime}%`;
+            document.getElementById('val-uptime').style.color = state.uptime > 95 ? 'var(--accent-green)' : (state.uptime > 50 ? 'var(--accent-amber)' : 'var(--accent-red)');
+        }
+
+        function getValidNeighbors(x, y) {
+            const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+            return dirs.map(d => ({ x: x + d.x, y: y + d.y })).filter(n => isValidTile(n.x, n.y));
+        }
+
+        // --- TICK ENGINE & RANDOM EVENTS ---
+        function simulationTick() {
+            state.cash += state.netIncome;
+            recalculateInfrastructure();
+        }
+
+        function triggerRandomEvents() {
+            const roll = Math.random();
+            if (roll < 0.15) { // 15% chance of incident
+                const events = [
+                    { msg: "Power Grid Surge! Emergency UPS systems engaged.", type: "alert" },
+                    { msg: "Cooling Pipe Condensation Fault detected in central server bank.", type: "alert" },
+                    { msg: "High Density ML Client contract secured! Revenue temporarily boosted.", type: "success" },
+                    { msg: "DDoS Cyber attack targeted primary node servers!", type: "alert" }
+                ];
+                const evt = events[Math.floor(Math.random() * events.length)];
+                logEvent(evt.msg, evt.type);
+            }
+        }
+
+        // --- RENDER ENGINE (HTML5 CANVAS) ---
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Grid/Floor
+            drawIsometricGrid();
+
+            // Render Layer Content
+            if (state.viewMode === 'surface') {
+                drawSurfaceLayer();
+            } else {
+                drawUtilityLayer();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawIsometricGrid() {
+            for (let x = 0; x < state.gridSize; x++) {
+                for (let y = 0; y < state.gridSize; y++) {
+                    const pos = gridToScreen(x, y);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                    ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
+                    ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                    ctx.closePath();
+
+                    ctx.fillStyle = (state.viewMode === 'surface') ? '#111827' : '#090d14';
+                    ctx.fill();
+                    ctx.strokeStyle = (state.viewMode === 'surface') ? '#1f2937' : '#1e293b';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawSurfaceLayer() {
+            for (let x = 0; x < state.gridSize; x++) {
+                for (let y = 0; y < state.gridSize; y++) {
+                    const tile = state.surfaceGrid[x][y];
+                    const pos = gridToScreen(x, y);
+
+                    if (tile) {
+                        const h = 24; // Height of rack 3D box
+                        
+                        // Top Face Colors
+                        let topColor = '#3b82f6';
+                        let sideColor = '#1d4ed8';
+
+                        if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
+                        if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
+                        if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
+
+                        if (!tile.active && tile.type !== 'ups') {
+                            topColor = '#4b5563';
+                            sideColor = '#1f2937';
+                        }
+
+                        // Left Face
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
+                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT - h);
+                        ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
+                        ctx.fillStyle = sideColor;
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Right Face
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, pos.y + TILE_HEIGHT);
+                        ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                        ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
+                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT - h);
+                        ctx.fillStyle = adjustBrightness(sideColor, -20);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Top Face
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, pos.y - h);
+                        ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
+                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT - h);
+                        ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
+                        ctx.fillStyle = topColor;
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Render glowing status server LEDs
+                        if (tile.active && Math.random() > 0.3) {
+                            ctx.fillStyle = '#60a5fa';
+                            ctx.fillRect(pos.x - 4, pos.y + TILE_HEIGHT / 2 - h / 2, 3, 3);
+                            ctx.fillStyle = '#34d399';
+                            ctx.fillRect(pos.x + 2, pos.y + TILE_HEIGHT / 2 - h / 2, 3, 3);
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawUtilityLayer() {
+            for (let x = 0; x < state.gridSize; x++) {
+                for (let y = 0; y < state.gridSize; y++) {
+                    const util = state.utilityGrid[x][y];
+                    const pos = gridToScreen(x, y);
+
+                    // Power Cable Overlay (Yellow lines)
+                    if (util.power) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = '#f59e0b';
+                        ctx.lineWidth = 4;
+                        ctx.moveTo(pos.x - 10, pos.y + TILE_HEIGHT / 2);
+                        ctx.lineTo(pos.x + 10, pos.y + TILE_HEIGHT / 2);
+                        ctx.stroke();
+                    }
+
+                    // Cooling Pipe Overlay (Cyan lines)
+                    if (util.cooling) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = '#06b6d4';
+                        ctx.lineWidth = 4;
+                        ctx.moveTo(pos.x, pos.y + TILE_HEIGHT / 2 - 6);
+                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT / 2 + 6);
+                        ctx.stroke();
+                    }
+
+                    // Utility Sources (Nodes)
+                    if (util.nodeType) {
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 12, 0, Math.PI * 2);
+                        ctx.fillStyle = util.nodeType === 'power_plant' ? '#f59e0b' : '#3b82f6';
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+
+                        // Icon label inside node
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(util.nodeType === 'power_plant' ? 'PWR' : 'COOL', pos.x, pos.y + TILE_HEIGHT / 2 + 3);
+                    }
+                }
+            }
+        }
+
+        // --- HELPER UTILS ---
+        function adjustBrightness(hex, percent) {
+            let num = parseInt(hex.replace('#', ''), 16),
+                amt = Math.round(2.55 * percent),
+                R = (num >> 16) + amt,
+                G = (num >> 8 & 0x00FF) + amt,
+                B = (num & 0x0000FF) + amt;
+            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+        }
+    </script>
+</body>
+</html>
