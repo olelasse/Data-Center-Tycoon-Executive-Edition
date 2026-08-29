@@ -3,85 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Center Tycoon</title>
+    <title>Data Center Tycoon: Executive Edition</title>
     <style>
         :root {
-            --bg-dark: #0a0d12;
-            --panel-bg: #121820;
-            --panel-border: #1f2937;
+            --bg-dark: #080b10;
+            --panel-bg: #111620;
+            --panel-border: #1e293b;
             --accent-green: #10b981;
             --accent-blue: #3b82f6;
             --accent-amber: #f59e0b;
             --accent-red: #ef4444;
             --accent-purple: #8b5cf6;
-            --text-main: #e5e7eb;
+            --text-main: #f3f4f6;
             --text-muted: #9ca3af;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
         #header {
             background-color: var(--panel-bg);
             border-bottom: 2px solid var(--panel-border);
-            padding: 10px 20px;
+            padding: 8px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 10;
         }
 
-        .brand {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--accent-blue);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .brand { font-size: 1.1rem; font-weight: bold; color: var(--accent-blue); display: flex; align-items: center; gap: 8px; }
+        .stats-bar { display: flex; gap: 12px; }
+        .stat-item { display: flex; flex-direction: column; align-items: center; }
+        .stat-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
+        .stat-value { font-size: 0.85rem; font-weight: bold; }
 
-        .stats-bar {
-            display: flex;
-            gap: 15px;
-        }
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .stat-label {
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        .stat-value {
-            font-size: 1rem;
-            font-weight: bold;
-        }
-
-        #main-container {
-            display: flex;
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-        }
+        #main-container { display: flex; flex: 1; position: relative; overflow: hidden; }
 
         #sidebar {
             width: 320px;
@@ -90,1412 +46,621 @@
             display: flex;
             flex-direction: column;
             z-index: 5;
-            padding: 15px;
-            gap: 12px;
+            padding: 12px;
+            gap: 10px;
             overflow-y: auto;
         }
 
         .section-title {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-            border-bottom: 1px solid var(--panel-border);
-            padding-bottom: 4px;
+            font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);
+            letter-spacing: 1px; margin-bottom: 4px; border-bottom: 1px solid var(--panel-border); padding-bottom: 2px;
         }
 
-        .view-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 6px;
+        .tab-group { display: flex; gap: 4px; margin-bottom: 6px; }
+        .tab-btn {
+            flex: 1; background: #1a2234; border: 1px solid var(--panel-border); color: var(--text-muted);
+            padding: 6px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; text-align: center; font-weight: bold;
         }
+        .tab-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
 
         .btn {
-            background-color: #1f293d;
-            border: 1px solid #374151;
-            color: var(--text-main);
-            padding: 8px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
+            background-color: #1e293b; border: 1px solid #334155; color: var(--text-main);
+            padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: 600;
+            display: flex; align-items: center; justify-content: center; gap: 4px; transition: 0.2s;
         }
-
-        .btn:hover {
-            background-color: #2d3748;
-            border-color: var(--accent-blue);
-        }
-
-        .btn.active {
-            background-color: var(--accent-blue);
-            color: white;
-            border-color: var(--accent-blue);
-        }
-
-        .btn-action {
-            background-color: #162436;
-            border-color: #2b3e55;
-            margin-bottom: 4px;
-        }
-
-        .build-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 6px;
-        }
+        .btn:hover { background-color: #334155; border-color: var(--accent-blue); }
+        .btn.active { background-color: var(--accent-blue); color: white; }
 
         .build-card {
-            background: #18202c;
-            border: 1px solid var(--panel-border);
-            border-radius: 4px;
-            padding: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
+            background: #161e2e; border: 1px solid var(--panel-border); border-radius: 4px;
+            padding: 6px 8px; cursor: pointer; margin-bottom: 6px;
         }
+        .build-card:hover { border-color: var(--accent-blue); background: #1c273c; }
+        .build-card.selected { border-color: var(--accent-green); background: #0f2922; }
+        .build-card.locked { opacity: 0.5; cursor: not-allowed; border-color: #334155; }
 
-        .build-card:hover {
-            border-color: var(--accent-blue);
-            background: #1e293b;
-        }
-
-        .build-card.selected {
-            border-color: var(--accent-green);
-            background: #142824;
-        }
-
-        .build-card-title {
-            font-weight: bold;
-            font-size: 0.85rem;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .build-card-cost {
-            color: var(--accent-green);
-        }
-
-        .build-card-desc {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
-
-        .build-card-stats {
-            display: flex;
-            gap: 8px;
-            font-size: 0.68rem;
-            margin-top: 4px;
-            color: #d1d5db;
-        }
-
-        #viewport {
-            flex: 1;
-            position: relative;
-            background-color: #05070a;
-            cursor: crosshair;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
+        #viewport { flex: 1; position: relative; background-color: #030508; cursor: crosshair; }
+        canvas { display: block; width: 100%; height: 100%; }
 
         #event-log {
-            position: absolute;
-            bottom: 15px;
-            right: 15px;
-            width: 330px;
-            max-height: 140px;
-            background: rgba(18, 24, 32, 0.88);
-            border: 1px solid var(--panel-border);
-            backdrop-filter: blur(4px);
-            border-radius: 4px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            overflow-y: auto;
-            pointer-events: none;
+            position: absolute; bottom: 12px; right: 12px; width: 300px; max-height: 120px;
+            background: rgba(17, 22, 32, 0.92); border: 1px solid var(--panel-border);
+            border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 4px;
+            overflow-y: auto; pointer-events: none; font-size: 0.7rem;
         }
-
-        .log-entry {
-            font-size: 0.75rem;
-            padding: 4px 6px;
-            border-radius: 2px;
-            background: rgba(0,0,0,0.3);
-            border-left: 3px solid var(--accent-blue);
-        }
-
-        .log-entry.alert { border-left-color: var(--accent-red); color: #fca5a5; }
-        .log-entry.success { border-left-color: var(--accent-green); }
-
-        .overlay-indicator {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(18, 24, 32, 0.9);
-            border: 1px solid var(--panel-border);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            pointer-events: none;
-        }
-
-        .indicator-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: var(--accent-green);
-        }
+        .log-entry.alert { border-left: 3px solid var(--accent-red); color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
+        .log-entry.success { border-left: 3px solid var(--accent-green); background: rgba(16, 185, 129, 0.1); }
 
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(5, 7, 10, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(3, 5, 8, 0.88); backdrop-filter: blur(6px); z-index: 100;
+            display: flex; align-items: center; justify-content: center;
         }
-
         .modal-content {
-            background: var(--panel-bg);
-            border: 2px solid var(--panel-border);
-            border-radius: 8px;
-            width: 480px;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: 8px;
+            width: 520px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
         }
-
-        .modal-title {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: var(--accent-blue);
-            text-align: center;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .form-group label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        .select-input {
-            background: #18202c;
-            border: 1px solid var(--panel-border);
-            color: var(--text-main);
-            padding: 10px;
-            border-radius: 4px;
-            outline: none;
-        }
+        .modal-title { font-size: 1.2rem; font-weight: bold; color: var(--accent-blue); text-align: center; }
 
         #tile-tooltip {
-            position: absolute;
-            display: none;
-            pointer-events: none;
-            background: rgba(15, 23, 42, 0.95);
-            border: 1px solid var(--accent-blue);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            z-index: 50;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            line-height: 1.4;
+            position: absolute; display: none; pointer-events: none; background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--accent-blue); padding: 8px 10px; border-radius: 4px; font-size: 0.7rem; z-index: 50;
         }
+
+        .sla-card, .tech-card {
+            background: #182234; border: 1px solid var(--panel-border); padding: 8px; border-radius: 4px;
+            display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; margin-bottom: 6px;
+        }
+        .badge { font-size: 0.6rem; padding: 2px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; width: fit-content; }
+        .badge-green { background: #065f46; color: #a7f3d0; }
+        .badge-amber { background: #78350f; color: #fde68a; }
+        .badge-purple { background: #581c87; color: #e9d5ff; }
     </style>
 </head>
 <body>
 
     <div id="new-game-modal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-title">Data Center Tycoon</div>
-            <div class="form-group">
-                <label>Select Difficulty Multiplier</label>
-                <select id="diff-select" class="select-input">
-                    <option value="easy">Easy (High Start Capital, Low Base Costs)</option>
-                    <option value="normal" selected>Normal (Standard Balance)</option>
-                    <option value="hard">Hard (Strict Budget & High Maintenance)</option>
+            <div class="modal-title">Data Center Tycoon: Executive Suite</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <label style="font-size:0.75rem; color:var(--text-muted)">Game Mode & Scenario</label>
+                <select id="mode-select" class="btn" style="text-align:left;" onchange="updateScenarioDesc()">
+                    <option value="sandbox">Endless Sandbox Mode</option>
+                    <option value="scenario_crisis">Challenge: Crisis Management (Fix Debt & Blackouts)</option>
+                    <option value="scenario_arctic">Challenge: Arctic Green Tech (100% Clean Energy)</option>
+                </select>
+                <div id="scenario-desc" style="font-size:0.7rem; color:var(--accent-amber);">Standard tycoon setup. Build, expand, research, and monetize at your own pace.</div>
+
+                <label style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Difficulty Tier</label>
+                <select id="diff-select" class="btn" style="text-align:left;">
+                    <option value="easy">Easy (High Funds, Disabled Thermal/Blackout Physics)</option>
+                    <option value="normal" selected>Normal (Standard Balance & SLA Penalties)</option>
+                    <option value="hard">Hard (Hot/Cold Aisle Physics & Grid Blackouts Enabled)</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>Select Starting Region / Environment</label>
-                <select id="region-select" class="select-input">
-                    <option value="nordic">Nordic Valley (Cold - Cheap Water Cooling)</option>
-                    <option value="desert">Desert Tech Park (Hot - High Cooling Draw)</option>
-                    <option value="metro">Metropolitan Hub (High Power Costs, High Client Revenue)</option>
-                </select>
-            </div>
-            <button class="btn" style="background: var(--accent-blue); color: white; padding: 12px;" onclick="startNewGame()">Launch Data Center</button>
+            <button class="btn" style="background: var(--accent-blue); color: white; padding: 10px; margin-top:8px;" onclick="startNewGame()">Initialize Ops Center</button>
         </div>
     </div>
 
     <div id="header">
-        <div class="brand">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 16V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8m16 0H4m16 0a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2m4-4h.01M8 12h.01"/></svg>
-            DATA CENTER TYCOON
-        </div>
+        <div class="brand">⚡ DATA CENTER TYCOON</div>
         <div class="stats-bar">
-            <div class="stat-item">
-                <span class="stat-label">Capital</span>
-                <span class="stat-value" id="val-cash" style="color: var(--accent-green)">$0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Net Monthly</span>
-                <span class="stat-value" id="val-net">$0/mo</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Power Supply</span>
-                <span class="stat-value" id="val-power">0/0 kW</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Cooling Load</span>
-                <span class="stat-value" id="val-cooling">0/0 BTU</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Uptime</span>
-                <span class="stat-value" id="val-uptime" style="color: var(--accent-blue)">100%</span>
-            </div>
+            <div class="stat-item"><span class="stat-label">Capital</span><span class="stat-value" id="val-cash" style="color:var(--accent-green)">$0</span></div>
+            <div class="stat-item"><span class="stat-label">Net Monthly</span><span class="stat-value" id="val-net">$0/mo</span></div>
+            <div class="stat-item"><span class="stat-label">Power</span><span class="stat-value" id="val-power">0/0 kW</span></div>
+            <div class="stat-item"><span class="stat-label">Cooling</span><span class="stat-value" id="val-cooling">0/0 BTU</span></div>
+            <div class="stat-item"><span class="stat-label">Research (RP)</span><span class="stat-value" id="val-rp" style="color:var(--accent-purple)">0 RP</span></div>
+            <div class="stat-item"><span class="stat-label">Spot Price</span><span class="stat-value" id="val-spot" style="color:var(--accent-amber)">$0.12/kWh</span></div>
         </div>
     </div>
 
     <div id="main-container">
         <div id="sidebar">
-            <div>
-                <div class="section-title">View Mode</div>
-                <div class="view-controls">
+            <div class="tab-group">
+                <div class="tab-btn active" id="tab-btn-build" onclick="switchSidebarTab('build')">Build</div>
+                <div class="tab-btn" id="tab-btn-sla" onclick="switchSidebarTab('sla')">SLA Contracts</div>
+                <div class="tab-btn" id="tab-btn-tech" onclick="switchSidebarTab('tech')">R&D Tree</div>
+                <div class="tab-btn" id="tab-btn-corp" onclick="switchSidebarTab('corp')">Prestige</div>
+            </div>
+
+            <div id="tab-view-controls">
+                <div class="section-title">View Level</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; margin-bottom:8px;">
                     <button class="btn active" id="btn-view-region" onclick="setViewMode('region')">Region</button>
-                    <button class="btn" id="btn-view-surface" onclick="setViewMode('surface')">Hall Floor</button>
+                    <button class="btn" id="btn-view-surface" onclick="setViewMode('surface')">Floor</button>
                     <button class="btn" id="btn-view-utility" onclick="setViewMode('utility')">Sub-Grid</button>
                 </div>
             </div>
 
-            <div>
-                <div class="section-title">System Controls</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                    <button class="btn btn-action" onclick="saveGame()">Save Game</button>
-                    <button class="btn btn-action" onclick="loadGame()">Load Game</button>
-                </div>
+            <div id="tab-content-build">
+                <div class="section-title">Construction Panel</div>
+                <div id="build-menu"></div>
             </div>
 
-            <div>
-                <div class="section-title">Construction & Tools Panel</div>
-                <div class="build-grid" id="build-menu"></div>
+            <div id="tab-content-sla" style="display:none;">
+                <div class="section-title">Active Contract Board</div>
+                <div id="sla-container"></div>
+            </div>
+
+            <div id="tab-content-tech" style="display:none;">
+                <div class="section-title">Research & Development</div>
+                <div id="tech-container"></div>
+            </div>
+
+            <div id="tab-content-corp" style="display:none;">
+                <div class="section-title">Corporate Valuation</div>
+                <div class="sla-card">
+                    <div>Valuation Target: <strong>$100,000</strong></div>
+                    <div style="color:var(--text-muted); font-size:0.65rem;">Sell company to unlock permanent Executive Board Perks for future runs.</div>
+                    <button class="btn" style="background:var(--accent-purple); color:white; margin-top:6px;" onclick="triggerPrestige()">Corporate Buyout (Prestige)</button>
+                </div>
+                <div class="section-title" style="margin-top:10px;">Executive Perks Unlocked</div>
+                <div id="perks-list" style="font-size:0.7rem; color:var(--text-muted);">No perks unlocked yet. Reach $100k valuation to buy out.</div>
             </div>
         </div>
 
         <div id="viewport">
             <canvas id="gameCanvas"></canvas>
-            
-            <div class="overlay-indicator">
-                <div class="indicator-dot" id="view-dot"></div>
-                <span id="view-mode-text">Regional Map Overview</span>
-            </div>
-
             <div id="tile-tooltip"></div>
-
-            <div id="event-log">
-                <div class="log-entry">Facility initialized. Build conduits & connect infrastructure.</div>
-            </div>
+            <div id="event-log"></div>
         </div>
     </div>
 
     <script>
-        const TILE_WIDTH = 64;
-        const TILE_HEIGHT = 32;
+        const TILE_WIDTH = 64, TILE_HEIGHT = 32;
 
-        const DIFFICULTY_SETTINGS = {
-            easy: { startCash: 150000, maintMult: 0.3, revMult: 1.4 },
-            normal: { startCash: 80000, maintMult: 0.5, revMult: 1.0 },
-            hard: { startCash: 45000, maintMult: 0.8, revMult: 0.8 }
-        };
-
-        const REGION_SETTINGS = {
-            nordic: { name: "Nordic Valley", coolingMult: 0.6, powerMult: 1.0 },
-            desert: { name: "Desert Tech Park", coolingMult: 1.5, powerMult: 0.9 },
-            metro: { name: "Metropolitan Hub", coolingMult: 1.0, powerMult: 1.3 }
+        const TECH_TREE = {
+            gpu_clusters: { id: 'gpu_clusters', name: 'GPU AI Superclusters', costRP: 150, unlocked: false, desc: 'Unlocks high-yield AI workload racks.' },
+            liquid_cooling: { id: 'liquid_cooling', name: 'Liquid Immersion Cooling', costRP: 250, unlocked: false, desc: 'Unlocks ultra-efficient immersion chillers.' },
+            quantum_nodes: { id: 'quantum_nodes', name: 'Quantum Compute Units', costRP: 500, unlocked: false, desc: 'Unlocks Tier 4 Quantum Processors.' },
+            diesel_generators: { id: 'diesel_generators', name: 'Backup Diesel Generators', costRP: 100, unlocked: false, desc: 'Protects facility during grid blackouts.' }
         };
 
         const ITEMS = {
-            repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix damaged or broken components.' },
-            upgrade: { id: 'upgrade', name: 'Upgrade Node', cost: 500, category: 'tool', desc: 'Upgrade rack or utility capacity by +50%.' },
-            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component (required to rebuild racks).' },
-            
-            hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector.' },
-            
-            server: { id: 'server', name: 'Standard Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, category: 'surface', desc: 'Standard compute rack.' },
-            storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, category: 'surface', desc: 'Low heat capacity revenue.' },
-            ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 3200, powerReq: 40, coolingReq: 35, rev: 1400, category: 'surface', desc: 'High density compute module.' },
-            ups: { id: 'ups', name: 'UPS Power Unit', cost: 1200, powerReq: -25, coolingReq: 0, rev: 0, category: 'surface', desc: 'Backup utility power module.' },
-            
-            power_plant: { id: 'power_plant', name: 'Substation Hub', cost: 1500, powerGen: 120, category: 'utility', layer: 'power', desc: 'High-voltage intake node.' },
-            power_cable: { id: 'power_cable', name: 'Power Line Conduit', cost: 20, category: 'utility', layer: 'power', desc: 'Routes electrical power under grid.' },
-            chiller: { id: 'chiller', name: 'HVAC Chiller Unit', cost: 1800, coolingGen: 100, category: 'utility', layer: 'cooling', desc: 'Refrigerant cooling generator.' },
-            cool_pipe: { id: 'cool_pipe', name: 'Cooling Pipe Line', cost: 25, category: 'utility', layer: 'cooling', desc: 'Routes liquid cooling loops.' }
+            repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix broken hardware/pipelines.' },
+            recycle: { id: 'recycle', name: 'Recycle Rack', cost: 50, category: 'tool', desc: 'Scrap degraded hardware for 50% refund.' },
+            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear tile component.' },
+
+            hall_node: { id: 'hall_node', name: 'Server Hall Sector', cost: 15000, category: 'region', desc: 'Expands operational site footprint.' },
+
+            server: { id: 'server', name: 'Std Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, compute: 100, category: 'surface', desc: 'Standard compute rack.' },
+            gpu_rack: { id: 'gpu_rack', name: 'AI GPU Cluster', cost: 3500, powerReq: 45, coolingReq: 40, rev: 1600, compute: 500, category: 'surface', reqTech: 'gpu_clusters', desc: 'High-density AI compute.' },
+            quantum: { id: 'quantum', name: 'Quantum Node', cost: 12000, powerReq: 120, coolingReq: 110, rev: 6500, compute: 2200, category: 'surface', reqTech: 'quantum_nodes', desc: 'Pinnacle server tech.' },
+            rd_lab: { id: 'rd_lab', name: 'R&D Lab Module', cost: 2500, powerReq: 20, coolingReq: 10, rpGen: 5, category: 'surface', desc: 'Generates monthly Research Points.' },
+            generator: { id: 'generator', name: 'Diesel Generator', cost: 4000, powerGen: 150, category: 'surface', reqTech: 'diesel_generators', desc: 'Backup power during blackouts.' },
+
+            power_plant: { id: 'power_plant', name: 'Substation Hub', cost: 1500, powerGen: 120, category: 'utility', layer: 'power', desc: 'Main electrical intake.' },
+            power_cable: { id: 'power_cable', name: 'Power Line Conduit', cost: 20, category: 'utility', layer: 'power', desc: 'Sub-grid electrical conduit.' },
+            chiller: { id: 'chiller', name: 'HVAC Chiller Unit', cost: 1800, coolingGen: 100, category: 'utility', layer: 'cooling', desc: 'Standard HVAC refrigerant unit.' },
+            liquid_chiller: { id: 'liquid_chiller', name: 'Liquid Immersion Loop', cost: 5000, coolingGen: 350, category: 'utility', layer: 'cooling', reqTech: 'liquid_cooling', desc: 'Ultra-efficient liquid cooling.' },
+            cool_pipe: { id: 'cool_pipe', name: 'Cooling Pipe Line', cost: 25, category: 'utility', layer: 'cooling', desc: 'Routes liquid coolant loops.' }
         };
 
         let state = {
-            cash: 0,
-            difficulty: 'normal',
-            region: 'nordic',
-            viewMode: 'region',
-            selectedItem: null,
-            activeHallIndex: '2_2',
-            regionGridSize: 6,
-            regionGrid: [],
-            hallGridSize: 10,
-            hallsData: {},
-            powerProduced: 0,
-            powerConsumed: 0,
-            coolingProduced: 0,
-            coolingConsumed: 0,
-            netIncome: 0,
-            uptime: 100,
-            panX: 0,
-            panY: 0,
-            
-            dragStartTile: null,
-            hoverTile: null,
-            isPanDragging: false,
-            panDragStart: { x: 0, y: 0 },
-            animTimer: 0
+            cash: 50000, difficulty: 'normal', mode: 'sandbox', viewMode: 'region', selectedItem: null,
+            activeHallIndex: '2_2', regionGridSize: 6, regionGrid: [], hallGridSize: 10, hallsData: {},
+            rp: 0, spotPrice: 0.12, isBlackout: false, blackoutTimer: 0, yearTick: 0,
+            activeContracts: [], availableContracts: [], executivePerks: { powerDiscount: 0, startBonus: 0 },
+            animTimer: 0, panX: 0, panY: 0, hoverTile: null, dragStartTile: null
         };
 
         let canvas, ctx;
 
         window.onload = () => {
-            canvas = document.getElementById('gameCanvas');
-            ctx = canvas.getContext('2d');
-
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-
-            setupControls();
-            resetCamera();
-
+            canvas = document.getElementById('gameCanvas'); ctx = canvas.getContext('2d');
+            window.addEventListener('resize', resizeCanvas); resizeCanvas(); setupControls();
             requestAnimationFrame(gameLoop);
             setInterval(simulationTick, 2000);
-            setInterval(triggerRandomEvents, 12000);
         };
 
-        function resetCamera() {
-            state.panX = canvas.width / 2;
-            state.panY = state.viewMode === 'region' ? canvas.height / 3 : canvas.height / 4;
+        function resizeCanvas() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
+        function resetCamera() { state.panX = canvas.width / 2; state.panY = state.viewMode === 'region' ? canvas.height / 3 : canvas.height / 4; }
+
+        function updateScenarioDesc() {
+            const m = document.getElementById('mode-select').value;
+            const d = document.getElementById('scenario-desc');
+            if (m === 'scenario_crisis') d.innerText = "CRISIS: Start with -$15,000 debt, damaged infrastructure, and frequent power blackouts!";
+            else if (m === 'scenario_arctic') d.innerText = "ARCTIC GREEN: 100% renewable mandate! Power costs +50%, but cooling costs -50%.";
+            else d.innerText = "Standard tycoon setup. Build, expand, research, and monetize at your own pace.";
         }
 
         function startNewGame() {
             state.difficulty = document.getElementById('diff-select').value;
-            state.region = document.getElementById('region-select').value;
-            
-            const diffConfig = DIFFICULTY_SETTINGS[state.difficulty];
-            state.cash = diffConfig.startCash;
+            state.mode = document.getElementById('mode-select').value;
+            state.cash = state.mode === 'scenario_crisis' ? -15000 : (30000 + state.executivePerks.startBonus);
+            state.rp = 0; state.regionGrid = Array(6).fill(null).map(() => Array(6).fill(false));
+            state.hallsData = {}; state.regionGrid[2][2] = true; initializeHallData(2, 2);
 
-            state.regionGrid = Array(state.regionGridSize).fill(null).map(() => Array(state.regionGridSize).fill(false));
-            state.hallsData = {};
+            if (state.mode === 'scenario_crisis') {
+                const h = state.hallsData['2_2'];
+                h.surfaceGrid[2][2] = { type: 'server', level: 1, wear: 0.4, damaged: true, active: false };
+                h.utilityGrid[2][2].damaged = true;
+            }
 
-            state.regionGrid[2][2] = true;
-            initializeHallData(2, 2);
-            state.activeHallIndex = '2_2';
-
+            generateContractBoard();
             document.getElementById('new-game-modal').style.display = 'none';
-            setViewMode('region');
-            recalculateInfrastructure();
-            logEvent(`Data Center launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
+            setViewMode('region'); recalculateInfrastructure();
+            logEvent("Data Center Facility initialized. Review Contracts & R&D Tree.", "success");
         }
 
         function initializeHallData(rx, ry) {
-            const key = `${rx}_${ry}`;
             const size = state.hallGridSize;
-            
-            state.hallsData[key] = {
+            state.hallsData[`${rx}_${ry}`] = {
                 surfaceGrid: Array(size).fill(null).map(() => Array(size).fill(null)),
-                utilityGrid: Array(size).fill(null).map(() => Array(size).fill(null).map(() => ({ power: false, cooling: false, nodeType: null, level: 1, damaged: false })))
+                utilityGrid: Array(size).fill(null).map(() => Array(size).fill(null).map(() => ({ power: false, cooling: false, nodeType: null, damaged: false })))
             };
         }
 
-        function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
+        function switchSidebarTab(tab) {
+            ['build', 'sla', 'tech', 'corp'].forEach(t => {
+                document.getElementById(`tab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+                document.getElementById(`tab-btn-${t}`).className = `tab-btn ${t === tab ? 'active' : ''}`;
+            });
+            if (tab === 'sla') renderSLABoard();
+            if (tab === 'tech') renderTechTree();
+        }
+
+        function setViewMode(mode) {
+            state.viewMode = mode; state.selectedItem = null; resetCamera();
+            ['region', 'surface', 'utility'].forEach(m => {
+                document.getElementById(`btn-view-${m}`).className = `btn ${mode === m ? 'active' : ''}`;
+            });
+            buildMenuUI();
         }
 
         function buildMenuUI() {
-            const menu = document.getElementById('build-menu');
-            menu.innerHTML = '';
-
+            const menu = document.getElementById('build-menu'); menu.innerHTML = '';
             Object.keys(ITEMS).forEach(key => {
                 const item = ITEMS[key];
-                
                 if (state.viewMode === 'region' && item.category !== 'region' && item.category !== 'tool') return;
                 if (state.viewMode === 'surface' && item.category !== 'surface' && item.category !== 'tool') return;
                 if (state.viewMode === 'utility' && item.category !== 'utility' && item.category !== 'tool') return;
 
+                const isLocked = item.reqTech && !TECH_TREE[item.reqTech].unlocked;
                 const card = document.createElement('div');
-                card.className = `build-card ${state.selectedItem === key ? 'selected' : ''}`;
-                card.onclick = () => selectTool(key);
-
-                let statsText = '';
-                if (item.powerReq) statsText += `⚡ ${item.powerReq}kW `;
-                if (item.powerGen) statsText += `⚡ +${item.powerGen}kW `;
-                if (item.coolingReq) statsText += `❄️ ${item.coolingReq}BTU `;
-                if (item.coolingGen) statsText += `❄️ +${item.coolingGen}BTU `;
-                if (item.rev) statsText += `💵 +$${item.rev}/m `;
+                card.className = `build-card ${state.selectedItem === key ? 'selected' : ''} ${isLocked ? 'locked' : ''}`;
+                card.onclick = () => { if (!isLocked) { state.selectedItem = state.selectedItem === key ? null : key; buildMenuUI(); } };
 
                 card.innerHTML = `
-                    <div class="build-card-title">
-                        <span>${item.name}</span>
-                        <span class="build-card-cost">$${item.cost}</span>
+                    <div style="display:flex; justify-space-between; font-weight:bold;">
+                        <span>${item.name}</span><span style="color:var(--accent-green)">$${item.cost}</span>
                     </div>
-                    <div class="build-card-desc">${item.desc}</div>
-                    <div class="build-card-stats">${statsText}</div>
+                    <div style="font-size:0.65rem; color:var(--text-muted);">${item.desc}</div>
+                    ${isLocked ? `<div style="font-size:0.6rem; color:var(--accent-red)">🔒 Requires Tech: ${TECH_TREE[item.reqTech].name}</div>` : ''}
                 `;
                 menu.appendChild(card);
             });
         }
 
-        function selectTool(key) {
-            state.selectedItem = state.selectedItem === key ? null : key;
-            buildMenuUI();
+        function generateContractBoard() {
+            state.availableContracts = [
+                { id: 1, client: "Aether AI Labs", reqCompute: 300, payout: 2200, penalty: 4000, duration: 6, tier: "High Compute" },
+                { id: 2, client: "Global Stream Video", reqCompute: 150, payout: 950, penalty: 1500, duration: 12, tier: "Storage/Bandwidth" },
+                { id: 3, client: "FinTech Exchange", reqCompute: 600, payout: 5800, penalty: 12000, duration: 4, tier: "Low Latency (Tier 3)" }
+            ];
         }
 
-        function setViewMode(mode) {
-            state.viewMode = mode;
-            state.selectedItem = null;
-            resetCamera();
-
-            document.getElementById('btn-view-region').className = `btn ${mode === 'region' ? 'active' : ''}`;
-            document.getElementById('btn-view-surface').className = `btn ${mode === 'surface' ? 'active' : ''}`;
-            document.getElementById('btn-view-utility').className = `btn ${mode === 'utility' ? 'active' : ''}`;
+        function renderSLABoard() {
+            const container = document.getElementById('sla-container'); container.innerHTML = '';
             
-            const dot = document.getElementById('view-dot');
-            const text = document.getElementById('view-mode-text');
-            
-            if (mode === 'region') {
-                dot.style.backgroundColor = 'var(--accent-purple)';
-                text.innerText = 'Regional Facility Planning View';
-            } else if (mode === 'surface') {
-                dot.style.backgroundColor = 'var(--accent-green)';
-                text.innerText = `Hall (${state.activeHallIndex}) Floor Operations`;
-            } else {
-                dot.style.backgroundColor = 'var(--accent-blue)';
-                text.innerText = `Hall (${state.activeHallIndex}) Sub-Grid Utility Pipes`;
-            }
-
-            buildMenuUI();
-        }
-
-        function logEvent(msg, type = 'info') {
-            const log = document.getElementById('event-log');
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            entry.innerText = msg;
-            log.prepend(entry);
-            if (log.children.length > 8) log.removeChild(log.lastChild);
-        }
-
-        function gridToScreen(gx, gy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
-            const screenX = (gx - gy) * (scaleX / 2) + state.panX;
-            const screenY = (gx + gy) * (scaleY / 2) + state.panY;
-            return { x: screenX, y: screenY };
-        }
-
-        function screenToGrid(sx, sy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
-            const adjX = sx - state.panX;
-            const adjY = sy - state.panY;
-
-            const gx = (adjX / (scaleX / 2) + adjY / (scaleY / 2)) / 2;
-            const gy = (adjY / (scaleY / 2) - adjX / (scaleX / 2)) / 2;
-
-            return { x: Math.floor(gx), y: Math.floor(gy) };
-        }
-
-        function getLineTiles(start, end) {
-            const tiles = [];
-            const dx = Math.abs(end.x - start.x);
-            const dy = Math.abs(end.y - start.y);
-            const sx = start.x < end.x ? 1 : -1;
-            const sy = start.y < end.y ? 1 : -1;
-            let err = dx - dy;
-
-            let cx = start.x;
-            let cy = start.y;
-
-            while (true) {
-                tiles.push({ x: cx, y: cy });
-                if (cx === end.x && cy === end.y) break;
-                const e2 = 2 * err;
-                if (e2 > -dy) { err -= dy; cx += sx; }
-                if (e2 < dx) { err += dx; cy += sy; }
-            }
-            return tiles;
-        }
-
-        function setupControls() {
-            canvas.addEventListener('mousedown', (e) => {
-                if (e.button === 0) {
-                    const rect = canvas.getBoundingClientRect();
-                    const mouseX = e.clientX - rect.left;
-                    const mouseY = e.clientY - rect.top;
-
-                    const scaleX = state.viewMode === 'region' ? 120 : TILE_WIDTH;
-                    const scaleY = state.viewMode === 'region' ? 60 : TILE_HEIGHT;
-
-                    const tile = screenToGrid(mouseX, mouseY, scaleX, scaleY);
-                    const maxBound = state.viewMode === 'region' ? state.regionGridSize : state.hallGridSize;
-
-                    if (tile.x >= 0 && tile.x < maxBound && tile.y >= 0 && tile.y < maxBound) {
-                        state.dragStartTile = tile;
-                    } else {
-                        state.isPanDragging = true;
-                        state.panDragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
-                    }
-                }
-            });
-
-            canvas.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-
-                if (state.isPanDragging) {
-                    state.panX = e.clientX - state.panDragStart.x;
-                    state.panY = e.clientY - state.panDragStart.y;
-                } else {
-                    const scaleX = state.viewMode === 'region' ? 120 : TILE_WIDTH;
-                    const scaleY = state.viewMode === 'region' ? 60 : TILE_HEIGHT;
-                    const tile = screenToGrid(mouseX, mouseY, scaleX, scaleY);
-                    const maxBound = state.viewMode === 'region' ? state.regionGridSize : state.hallGridSize;
-
-                    if (tile.x >= 0 && tile.x < maxBound && tile.y >= 0 && tile.y < maxBound) {
-                        state.hoverTile = tile;
-                        updateTooltip(e.clientX, e.clientY);
-                    } else {
-                        state.hoverTile = null;
-                        document.getElementById('tile-tooltip').style.display = 'none';
-                    }
-                }
-            });
-
-            window.addEventListener('mouseup', (e) => {
-                if (state.dragStartTile && state.hoverTile) {
-                    applyMultiPlacement(state.dragStartTile, state.hoverTile);
-                }
-                state.dragStartTile = null;
-                state.isPanDragging = false;
-            });
-        }
-
-        function checkSectorStatus(rx, ry) {
-            const key = `${rx}_${ry}`;
-            const hall = state.hallsData[key];
-            if (!hall) return { active: false, damaged: false };
-
-            let damaged = false;
-            for (let x = 0; x < state.hallGridSize; x++) {
-                for (let y = 0; y < state.hallGridSize; y++) {
-                    const s = hall.surfaceGrid[x][y];
-                    const u = hall.utilityGrid[x][y];
-                    if ((s && s.damaged) || (u && u.damaged)) {
-                        damaged = true;
-                        break;
-                    }
-                }
-                if (damaged) break;
-            }
-            return { active: true, damaged };
-        }
-
-        function updateTooltip(screenX, screenY) {
-            const tooltip = document.getElementById('tile-tooltip');
-            if (!state.hoverTile) {
-                tooltip.style.display = 'none';
-                return;
-            }
-
-            tooltip.style.display = 'block';
-            tooltip.style.left = `${screenX + 15}px`;
-            tooltip.style.top = `${screenY + 15}px`;
-
-            const { x, y } = state.hoverTile;
-
-            if (state.viewMode === 'region') {
-                const unlocked = state.regionGrid[x] && state.regionGrid[x][y];
-                if (unlocked) {
-                    const status = checkSectorStatus(x, y);
-                    tooltip.innerHTML = `<strong>Server Hall (${x}, ${y})</strong><br>${status.damaged ? '<span style="color:var(--accent-red)">⚠ INCIDENT IN PROGRESS</span>' : '<span style="color:var(--accent-green)">✓ Operational</span>'}<br><span style="color:var(--accent-blue)">Click to Enter Sector</span>`;
-                } else if (state.selectedItem === 'hall_node') {
-                    const cost = ITEMS.hall_node.cost;
-                    const affordable = state.cash >= cost;
-                    tooltip.innerHTML = `Construct Hall (${x}, ${y})<br>Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${cost}</span>`;
-                } else {
-                    tooltip.innerHTML = `Unconstructed Sector (${x}, ${y})`;
-                }
-                return;
-            }
-
-            const hall = state.hallsData[state.activeHallIndex];
-            if (!hall) return;
-
-            let lineTiles = [state.hoverTile];
-            if (state.dragStartTile && state.selectedItem) {
-                lineTiles = getLineTiles(state.dragStartTile, state.hoverTile);
-            }
-
-            if (state.selectedItem) {
-                const item = ITEMS[state.selectedItem];
-                
-                if (item.id === 'upgrade') {
-                    const surf = hall.surfaceGrid[x][y];
-                    if (surf) {
-                        const curLvl = surf.level || 1;
-                        const nextLvl = curLvl + 1;
-                        const baseItem = ITEMS[surf.type];
-                        const cost = item.cost;
-                        const affordable = state.cash >= cost;
-
-                        tooltip.innerHTML = `
-                            <strong>Upgrade Targeted Rack (${x}, ${y})</strong><br>
-                            Type: <strong>${baseItem.name}</strong><br>
-                            Level: <span style="color:var(--accent-blue)">Lvl ${curLvl} ➔ Lvl ${nextLvl}</span><br>
-                            Power: ${baseItem.powerReq * curLvl}kW ➔ <strong>${baseItem.powerReq * nextLvl}kW</strong><br>
-                            Cooling: ${baseItem.coolingReq * curLvl}BTU ➔ <strong>${baseItem.coolingReq * nextLvl}BTU</strong><br>
-                            Yield: +$${baseItem.rev * curLvl}/mo ➔ <strong style="color:var(--accent-green)">+$${baseItem.rev * nextLvl}/mo</strong><br>
-                            Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${cost}</span>
-                        `;
-                        return;
-                    } else {
-                        tooltip.innerHTML = `<strong>Upgrade Tool</strong><br><span style="color:var(--text-muted)">Hover over a rack to preview upgrades.</span>`;
-                        return;
-                    }
-                }
-
-                if (item.id === 'repair') {
-                    const surf = hall.surfaceGrid[x][y];
-                    const util = hall.utilityGrid[x][y];
-                    const needsRepair = (surf && surf.damaged) || util.damaged;
-
-                    if (needsRepair) {
-                        const affordable = state.cash >= item.cost;
-                        tooltip.innerHTML = `
-                            <strong style="color:var(--accent-amber)">Repair Target Locked (${x}, ${y})</strong><br>
-                            Component: <strong>${surf ? ITEMS[surf.type].name : 'Sub-grid Pipeline'}</strong><br>
-                            Status: <span style="color:var(--accent-red)">DAMAGED / INOPERATIVE</span><br>
-                            Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${item.cost}</span>
-                        `;
-                    } else {
-                        tooltip.innerHTML = `<strong>Repair Tool</strong><br><span style="color:var(--text-muted)">Tile is functioning normally.</span>`;
-                    }
-                    return;
-                }
-
-                // Check for collision on single placement hover
-                if (item.category === 'surface' && hall.surfaceGrid[x][y]) {
-                    tooltip.innerHTML = `
-                        <strong style="color:var(--accent-red)">Tile Occupied!</strong><br>
-                        Space has <strong>${ITEMS[hall.surfaceGrid[x][y].type].name}</strong>.<br>
-                        <span style="color:var(--accent-amber)">Must Demolish existing rack first!</span>
-                    `;
-                    return;
-                }
-
-                let placeableCount = 0;
-                let runningCost = 0;
-
-                lineTiles.forEach(t => {
-                    if (runningCost + item.cost <= state.cash) {
-                        runningCost += item.cost;
-                        placeableCount++;
-                    }
-                });
-
-                const totalCost = item.cost * lineTiles.length;
-                const fullyAffordable = state.cash >= totalCost;
-
-                tooltip.innerHTML = `
-                    <strong>${item.name}</strong><br>
-                    Selected: <strong>${lineTiles.length} units</strong><br>
-                    Cost: <span style="color:${fullyAffordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${totalCost.toLocaleString()}</span><br>
-                    ${!fullyAffordable ? `<span style="color:var(--accent-red)">⚠ Can only afford ${placeableCount} / ${lineTiles.length}</span>` : '<span style="color:var(--accent-green)">✓ Ready to build</span>'}
+            state.activeContracts.forEach(c => {
+                container.innerHTML += `
+                    <div class="sla-card" style="border-color:var(--accent-green);">
+                        <span class="badge badge-green">Active Contract</span>
+                        <strong>${c.client} (${c.tier})</strong>
+                        <div>Req Compute: <strong>${c.reqCompute} Units</strong></div>
+                        <div>Monthly Payout: <strong style="color:var(--accent-green)">+$${c.payout}/mo</strong></div>
+                        <div>Remaining: ${c.duration} Months</div>
+                    </div>
                 `;
+            });
+
+            state.availableContracts.forEach((c, idx) => {
+                container.innerHTML += `
+                    <div class="sla-card">
+                        <span class="badge badge-amber">Open Bid</span>
+                        <strong>${c.client} (${c.tier})</strong>
+                        <div>Req Compute: ${c.reqCompute} | Duration: ${c.duration}m</div>
+                        <div>Yield: <strong style="color:var(--accent-green)">+$${c.payout}/mo</strong> | Breach Fines: <strong style="color:var(--accent-red)">-$${c.penalty}</strong></div>
+                        <button class="btn" style="margin-top:4px; background:var(--accent-blue);" onclick="acceptContract(${idx})">Sign Contract</button>
+                    </div>
+                `;
+            });
+        }
+
+        function acceptContract(idx) {
+            const c = state.availableContracts.splice(idx, 1)[0];
+            state.activeContracts.push(c); renderSLABoard(); recalculateInfrastructure();
+            logEvent(`Signed SLA Contract with ${c.client}.`, "success");
+        }
+
+        function renderTechTree() {
+            const container = document.getElementById('tech-container'); container.innerHTML = '';
+            Object.keys(TECH_TREE).forEach(key => {
+                const t = TECH_TREE[key];
+                container.innerHTML += `
+                    <div class="tech-card" style="${t.unlocked ? 'border-color:var(--accent-purple);' : ''}">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${t.name}</strong>
+                            <span class="badge ${t.unlocked ? 'badge-purple' : 'badge-amber'}">${t.unlocked ? 'UNLOCKED' : t.costRP + ' RP'}</span>
+                        </div>
+                        <div style="color:var(--text-muted); font-size:0.65rem;">${t.desc}</div>
+                        ${!t.unlocked ? `<button class="btn" style="margin-top:4px;" onclick="unlockTech('${key}')">Research Tech</button>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function unlockTech(key) {
+            const t = TECH_TREE[key];
+            if (state.rp >= t.costRP) {
+                state.rp -= t.costRP; t.unlocked = true; renderTechTree(); buildMenuUI();
+                logEvent(`Researched Technology: ${t.name}!`, "success");
             } else {
-                const surf = hall.surfaceGrid[x][y];
-                const util = hall.utilityGrid[x][y];
-                
-                let info = `<strong>Tile (${x}, ${y}) Status:</strong><br>`;
-                
-                if (surf) {
-                    info += `• Surface: ${ITEMS[surf.type].name} (Lvl ${surf.level || 1})<br>`;
-                    if (surf.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair Tool</span><br>`;
-                }
-                
-                if (util.nodeType) info += `• Sub-Node: ${ITEMS[util.nodeType].name}<br>`;
-                if (util.power) info += `• ⚡ Power Conduit Connected<br>`;
-                if (util.cooling) info += `• ❄️ Cooling Line Connected<br>`;
-
-                if (!surf && !util.nodeType && !util.power && !util.cooling) {
-                    info += `<span style="color:var(--text-muted)">Empty Plot. Select a tool to build.</span>`;
-                }
-
-                tooltip.innerHTML = info;
-            }
-        }
-
-        function applyMultiPlacement(start, end) {
-            if (state.viewMode === 'region') {
-                handleTileClick(start.x, start.y);
-                return;
-            }
-
-            if (!state.selectedItem) {
-                if (start.x === end.x && start.y === end.y && state.regionGrid[start.x] && state.regionGrid[start.x][start.y]) {
-                    state.activeHallIndex = `${start.x}_${start.y}`;
-                    setViewMode('surface');
-                }
-                return;
-            }
-
-            const line = getLineTiles(start, end);
-            const item = ITEMS[state.selectedItem];
-            const hall = state.hallsData[state.activeHallIndex];
-            if (!hall) return;
-
-            let count = 0;
-            let blockedByCollision = 0;
-
-            line.forEach(t => {
-                const { x, y } = t;
-                if (state.cash < item.cost && item.id !== 'demolish') return;
-
-                if (item.id === 'repair') {
-                    const surf = hall.surfaceGrid[x][y];
-                    const util = hall.utilityGrid[x][y];
-                    if ((surf && surf.damaged) || util.damaged) {
-                        state.cash -= item.cost;
-                        if (surf) surf.damaged = false;
-                        util.damaged = false;
-                        count++;
-                    }
-                } else if (item.id === 'upgrade') {
-                    const surf = hall.surfaceGrid[x][y];
-                    if (surf) {
-                        surf.level = (surf.level || 1) + 1;
-                        state.cash -= item.cost;
-                        count++;
-                    }
-                } else if (item.id === 'demolish') {
-                    if (state.viewMode === 'surface') hall.surfaceGrid[x][y] = null;
-                    else hall.utilityGrid[x][y] = { power: false, cooling: false, nodeType: null, level: 1, damaged: false };
-                    count++;
-                } else if (item.category === 'surface') {
-                    if (!hall.surfaceGrid[x][y]) {
-                        hall.surfaceGrid[x][y] = { type: item.id, active: false, level: 1, damaged: false };
-                        state.cash -= item.cost;
-                        count++;
-                    } else {
-                        blockedByCollision++;
-                    }
-                } else if (item.category === 'utility') {
-                    const util = hall.utilityGrid[x][y];
-                    if (item.layer === 'power') util.power = true;
-                    if (item.layer === 'cooling') util.cooling = true;
-                    if (item.powerGen || item.coolingGen) util.nodeType = item.id;
-                    state.cash -= item.cost;
-                    count++;
-                }
-            });
-
-            if (blockedByCollision > 0) {
-                logEvent(`Cannot place rack on occupied tiles! Demolish space first.`, "alert");
-            }
-
-            if (count > 0) {
-                logEvent(`Constructed ${count}x ${item.name}.`, "success");
-            } else if (line.length > 0 && state.cash < item.cost) {
-                logEvent(`Insufficient capital to construct requested elements!`, "alert");
-            }
-            recalculateInfrastructure();
-        }
-
-        function handleTileClick(x, y) {
-            if (state.viewMode === 'region') {
-                if (state.selectedItem === 'hall_node') {
-                    if (!state.regionGrid[x][y]) {
-                        if (state.cash < ITEMS.hall_node.cost) {
-                            logEvent("Not enough money to open a new hall sector!", "alert");
-                            return;
-                        }
-                        state.cash -= ITEMS.hall_node.cost;
-                        state.regionGrid[x][y] = true;
-                        initializeHallData(x, y);
-                        logEvent(`Constructed Server Hall Sector (${x}, ${y}).`, "success");
-                    }
-                } else {
-                    if (state.regionGrid[x][y]) {
-                        state.activeHallIndex = `${x}_${y}`;
-                        setViewMode('surface');
-                        logEvent(`Viewing Server Hall Sector (${x}, ${y}).`, "info");
-                    }
-                }
-                recalculateInfrastructure();
-            }
-        }
-
-        function recalculateInfrastructure() {
-            const diff = DIFFICULTY_SETTINGS[state.difficulty] || DIFFICULTY_SETTINGS.normal;
-            const reg = REGION_SETTINGS[state.region] || REGION_SETTINGS.nordic;
-
-            let powerCap = 0;
-            let coolingCap = 0;
-            let pDraw = 0;
-            let cDraw = 0;
-            let grossRev = 0;
-            let totalRacks = 0;
-            let operationalRacks = 0;
-
-            Object.keys(state.hallsData).forEach(key => {
-                const hall = state.hallsData[key];
-                const size = state.hallGridSize;
-
-                const poweredTiles = Array(size).fill(null).map(() => Array(size).fill(false));
-                const cooledTiles = Array(size).fill(null).map(() => Array(size).fill(false));
-
-                const pSources = [], cSources = [];
-
-                for (let x = 0; x < size; x++) {
-                    for (let y = 0; y < size; y++) {
-                        const util = hall.utilityGrid[x][y];
-                        if (!util.damaged) {
-                            if (util.nodeType === 'power_plant') {
-                                pSources.push({ x, y });
-                                powerCap += ITEMS.power_plant.powerGen * (util.level || 1);
-                            }
-                            if (util.nodeType === 'chiller') {
-                                cSources.push({ x, y });
-                                coolingCap += ITEMS.chiller.coolingGen * (util.level || 1);
-                            }
-                        }
-                    }
-                }
-
-                runBFS(hall.utilityGrid, pSources, poweredTiles, 'power');
-                runBFS(hall.utilityGrid, cSources, cooledTiles, 'cooling');
-
-                for (let x = 0; x < size; x++) {
-                    for (let y = 0; y < size; y++) {
-                        const tile = hall.surfaceGrid[x][y];
-                        if (tile && !tile.damaged) {
-                            const item = ITEMS[tile.type];
-                            const lvl = tile.level || 1;
-
-                            if (item.category === 'surface' && item.id !== 'ups') {
-                                totalRacks++;
-                                pDraw += (item.powerReq || 0) * lvl;
-                                cDraw += (item.coolingReq || 0) * lvl;
-
-                                if (poweredTiles[x][y] && cooledTiles[x][y]) {
-                                    tile.active = true;
-                                    operationalRacks++;
-                                    grossRev += (item.rev || 0) * lvl * diff.revMult;
-                                } else {
-                                    tile.active = false;
-                                }
-                            } else if (item.id === 'ups') {
-                                powerCap += Math.abs(item.powerReq) * lvl;
-                            }
-                        }
-                    }
-                }
-            });
-
-            cDraw = Math.round(cDraw * reg.coolingMult);
-            pDraw = Math.round(pDraw * reg.powerMult);
-
-            state.powerProduced = powerCap;
-            state.powerConsumed = pDraw;
-            state.coolingProduced = coolingCap;
-            state.coolingConsumed = cDraw;
-
-            let efficiency = 1.0;
-            if (pDraw > powerCap) efficiency -= 0.5;
-            if (cDraw > coolingCap) efficiency -= 0.4;
-
-            state.uptime = Math.max(0, Math.round((totalRacks > 0 ? (operationalRacks / totalRacks) : 1.0) * efficiency * 100));
-
-            const baseSectorFee = Object.keys(state.hallsData).length * 150;
-            const utilityMaintenance = ((pDraw * 0.4) + (cDraw * 0.3)) * diff.maintMult;
-            const totalExpense = Math.round(baseSectorFee + utilityMaintenance);
-
-            state.netIncome = Math.round((grossRev * (state.uptime / 100)) - totalExpense);
-
-            document.getElementById('val-cash').innerText = `$${state.cash.toLocaleString()}`;
-            document.getElementById('val-net').innerText = `$${state.netIncome}/mo`;
-            document.getElementById('val-net').style.color = state.netIncome >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-            
-            document.getElementById('val-power').innerText = `${pDraw}/${powerCap} kW`;
-            document.getElementById('val-power').style.color = pDraw > powerCap ? 'var(--accent-red)' : 'var(--text-main)';
-            
-            document.getElementById('val-cooling').innerText = `${cDraw}/${coolingCap} BTU`;
-            document.getElementById('val-cooling').style.color = cDraw > coolingCap ? 'var(--accent-red)' : 'var(--text-main)';
-            
-            document.getElementById('val-uptime').innerText = `${state.uptime}%`;
-        }
-
-        function runBFS(grid, sources, resultMatrix, layerType) {
-            const queue = [...sources];
-            queue.forEach(s => resultMatrix[s.x][s.y] = true);
-
-            while (queue.length > 0) {
-                const { x, y } = queue.shift();
-                const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
-
-                dirs.forEach(d => {
-                    const nx = x + d.x, ny = y + d.y;
-                    if (nx >= 0 && nx < state.hallGridSize && ny >= 0 && ny < state.hallGridSize) {
-                        if (!resultMatrix[nx][ny]) {
-                            const util = grid[nx][ny];
-                            if (!util.damaged && ((layerType === 'power' && util.power) || (layerType === 'cooling' && util.cooling) || util.nodeType)) {
-                                resultMatrix[nx][ny] = true;
-                                queue.push({ x: nx, y: ny });
-                            }
-                        }
-                    }
-                });
+                logEvent("Insufficient Research Points (RP)!", "alert");
             }
         }
 
         function simulationTick() {
+            state.yearTick++;
+            state.spotPrice = Number((0.08 + Math.random() * 0.10).toFixed(2));
+            
+            // Random Grid Blackout Event in Hard Mode
+            if (state.difficulty === 'hard' && Math.random() < 0.12 && !state.isBlackout) {
+                state.isBlackout = true; state.blackoutTimer = 3;
+                logEvent("CRITICAL ALERT: MUNICIPAL POWER GRID BLACKOUT!", "alert");
+            } else if (state.isBlackout) {
+                state.blackoutTimer--;
+                if (state.blackoutTimer <= 0) { state.isBlackout = false; logEvent("Power Grid restored.", "success"); }
+            }
+
+            // Hardware Wear & RP Generation
+            let rpTotal = 0;
+            Object.keys(state.hallsData).forEach(k => {
+                const h = state.hallsData[k];
+                for (let x = 0; x < state.hallGridSize; x++) {
+                    for (let y = 0; y < state.hallGridSize; y++) {
+                        const s = h.surfaceGrid[x][y];
+                        if (s) {
+                            if (s.type === 'rd_lab' && !s.damaged) rpTotal += ITEMS.rd_lab.rpGen;
+                            if (state.yearTick % 6 === 0 && ITEMS[s.type].category === 'surface' && s.type !== 'rd_lab') {
+                                s.wear = Math.min(0.8, (s.wear || 0) + 0.03); // 3% wear
+                            }
+                        }
+                    }
+                }
+            });
+
+            state.rp += rpTotal;
             state.cash += state.netIncome;
+
+            // Process SLA Contract Durations
+            for (let i = state.activeContracts.length - 1; i >= 0; i--) {
+                const c = state.activeContracts[i];
+                c.duration--;
+                if (c.duration <= 0) {
+                    logEvent(`Contract fulfilled with ${c.client}! Bonus payout received.`, "success");
+                    state.cash += c.payout * 2; state.activeContracts.splice(i, 1);
+                }
+            }
+
             recalculateInfrastructure();
         }
 
-        function triggerRandomEvents() {
-            if (Math.random() < 0.25) {
-                const eventTypes = ['disaster', 'surge', 'maintenance'];
-                const selected = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+        function recalculateInfrastructure() {
+            let pCap = 0, cCap = 0, pDraw = 0, cDraw = 0, grossRev = 0, totalCompute = 0;
 
-                const keys = Object.keys(state.hallsData);
-                if (keys.length === 0) return;
-                const randomHallKey = keys[Math.floor(Math.random() * keys.length)];
-                const hall = state.hallsData[randomHallKey];
+            Object.keys(state.hallsData).forEach(k => {
+                const h = state.hallsData[k];
+                const pMatrix = Array(10).fill(null).map(() => Array(10).fill(false));
+                const cMatrix = Array(10).fill(null).map(() => Array(10).fill(false));
+                const pSources = [], cSources = [];
 
-                const rx = Math.floor(Math.random() * state.hallGridSize);
-                const ry = Math.floor(Math.random() * state.hallGridSize);
-
-                if (selected === 'disaster') {
-                    if (hall.surfaceGrid[rx][ry]) {
-                        hall.surfaceGrid[rx][ry].damaged = true;
-                        logEvent(`DISASTER! Electrical Fire damaged rack at sector ${randomHallKey} (${rx}, ${ry})!`, "alert");
+                for (let x = 0; x < 10; x++) {
+                    for (let y = 0; y < 10; y++) {
+                        const u = h.utilityGrid[x][y];
+                        const s = h.surfaceGrid[x][y];
+                        if (!u.damaged) {
+                            if (u.nodeType === 'power_plant') { pSources.push({x,y}); pCap += ITEMS.power_plant.powerGen; }
+                            if (u.nodeType === 'chiller') { cSources.push({x,y}); cCap += ITEMS[u.nodeType].coolingGen; }
+                        }
+                        if (s && s.type === 'generator' && !s.damaged && state.isBlackout) pCap += ITEMS.generator.powerGen;
                     }
-                } else if (selected === 'maintenance') {
-                    if (hall.utilityGrid[rx][ry].nodeType || hall.utilityGrid[rx][ry].power || hall.utilityGrid[rx][ry].cooling) {
-                        hall.utilityGrid[rx][ry].damaged = true;
-                        logEvent(`PIPE BURST! Utility damaged at sector ${randomHallKey} (${rx}, ${ry})! Select Repair Tool!`, "alert");
-                    }
-                } else {
-                    logEvent("Market Surge! High demand boosts computing yield.", "success");
                 }
-                recalculateInfrastructure();
+
+                if (!state.isBlackout) runBFS(h.utilityGrid, pSources, pMatrix, 'power');
+                runBFS(h.utilityGrid, cSources, cMatrix, 'cooling');
+
+                for (let x = 0; x < 10; x++) {
+                    for (let y = 0; y < 10; y++) {
+                        const s = h.surfaceGrid[x][y];
+                        if (s && !s.damaged) {
+                            const item = ITEMS[s.type];
+                            if (item.category === 'surface' && item.compute) {
+                                pDraw += item.powerReq; cDraw += item.coolingReq;
+                                const wearPenalty = 1 - (s.wear || 0);
+
+                                // Hard Mode: Thermal Hotspot Penalty check
+                                let thermalPenalty = 1.0;
+                                if (state.difficulty === 'hard' && y > 0 && h.surfaceGrid[x][y-1]) thermalPenalty = 0.7;
+
+                                if ((pMatrix[x][y] || (s.type === 'generator')) && cMatrix[x][y]) {
+                                    s.active = true;
+                                    totalCompute += Math.round(item.compute * wearPenalty * thermalPenalty);
+                                    grossRev += item.rev * wearPenalty;
+                                } else { s.active = false; }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // SLA Compliance Check
+            let slaPenalties = 0;
+            state.activeContracts.forEach(c => {
+                if (totalCompute >= c.reqCompute) { grossRev += c.payout; }
+                else { slaPenalties += c.penalty; logEvent(`SLA BREACH! Compute missing for ${c.client}. Fine incurred!`, "alert"); }
+            });
+
+            state.powerProduced = pCap; state.powerConsumed = pDraw;
+            state.coolingProduced = cCap; state.coolingConsumed = cDraw;
+
+            const energyExpense = Math.round((pDraw * state.spotPrice * 10) + (cDraw * 2));
+            state.netIncome = Math.round(grossRev - energyExpense - slaPenalties);
+
+            document.getElementById('val-cash').innerText = `$${state.cash.toLocaleString()}`;
+            document.getElementById('val-net').innerText = `$${state.netIncome}/mo`;
+            document.getElementById('val-power').innerText = `${pDraw}/${pCap} kW ${state.isBlackout ? '⚠ BLACKOUT' : ''}`;
+            document.getElementById('val-cooling').innerText = `${cDraw}/${cCap} BTU`;
+            document.getElementById('val-rp').innerText = `${state.rp} RP`;
+            document.getElementById('val-spot').innerText = `$${state.spotPrice}/kWh`;
+        }
+
+        function runBFS(grid, sources, matrix, type) {
+            const q = [...sources]; q.forEach(s => matrix[s.x][s.y] = true);
+            while (q.length > 0) {
+                const { x, y } = q.shift();
+                [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}].forEach(d => {
+                    const nx = x + d.x, ny = y + d.y;
+                    if (nx >= 0 && nx < 10 && ny >= 0 && ny < 10 && !matrix[nx][ny]) {
+                        const u = grid[nx][ny];
+                        if (!u.damaged && ((type === 'power' && u.power) || (type === 'cooling' && u.cooling) || u.nodeType)) {
+                            matrix[nx][ny] = true; q.push({ x: nx, y: ny });
+                        }
+                    }
+                });
             }
         }
 
-        function saveGame() {
-            try {
-                const saveData = JSON.stringify(state);
-                localStorage.setItem('dct_savegame', saveData);
-                logEvent("Game state successfully saved.", "success");
-            } catch (e) {
-                logEvent("Failed to save game state.", "alert");
+        function triggerPrestige() {
+            if (state.cash >= 100000) {
+                state.executivePerks.startBonus += 20000;
+                document.getElementById('perks-list').innerText = `• Permanent Board Perk: +$${state.executivePerks.startBonus.toLocaleString()} Starting Capital on new runs.`;
+                logEvent("Corporate Buyout complete! Executive Perks earned.", "success");
+                document.getElementById('new-game-modal').style.display = 'flex';
+            } else {
+                logEvent("Valuation must hit $100,000 to initiate Buyout!", "alert");
             }
         }
 
-        function loadGame() {
-            try {
-                const saveData = localStorage.getItem('dct_savegame');
-                if (!saveData) {
-                    logEvent("No saved game file found!", "alert");
-                    return;
+        function gridToScreen(gx, gy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
+            return { x: (gx - gy) * (scaleX / 2) + state.panX, y: (gx + gy) * (scaleY / 2) + state.panY };
+        }
+
+        function screenToGrid(sx, sy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
+            const adjX = sx - state.panX, adjY = sy - state.panY;
+            return { x: Math.floor((adjX / (scaleX / 2) + adjY / (scaleY / 2)) / 2), y: Math.floor((adjY / (scaleY / 2) - adjX / (scaleX / 2)) / 2) };
+        }
+
+        function setupControls() {
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const tile = screenToGrid(e.clientX - rect.left, e.clientY - rect.top, state.viewMode === 'region' ? 120 : TILE_WIDTH, state.viewMode === 'region' ? 60 : TILE_HEIGHT);
+                const max = state.viewMode === 'region' ? 6 : 10;
+                if (tile.x >= 0 && tile.x < max && tile.y >= 0 && tile.y < max) state.hoverTile = tile; else state.hoverTile = null;
+            });
+
+            canvas.addEventListener('click', () => {
+                if (!state.hoverTile) return;
+                const { x, y } = state.hoverTile;
+                const h = state.hallsData[state.activeHallIndex];
+
+                if (state.viewMode === 'region') {
+                    if (state.selectedItem === 'hall_node' && !state.regionGrid[x][y]) {
+                        state.cash -= ITEMS.hall_node.cost; state.regionGrid[x][y] = true; initializeHallData(x, y);
+                    } else if (state.regionGrid[x][y]) { state.activeHallIndex = `${x}_${y}`; setViewMode('surface'); }
+                    recalculateInfrastructure(); return;
                 }
-                state = JSON.parse(saveData);
-                document.getElementById('new-game-modal').style.display = 'none';
-                setViewMode(state.viewMode);
+
+                if (!state.selectedItem) return;
+                const item = ITEMS[state.selectedItem];
+
+                if (item.id === 'recycle') {
+                    if (h.surfaceGrid[x][y]) {
+                        state.cash += Math.round(ITEMS[h.surfaceGrid[x][y].type].cost * 0.5);
+                        h.surfaceGrid[x][y] = null; logEvent("Recycler reclaimed component.", "success");
+                    }
+                } else if (item.id === 'demolish') {
+                    if (state.viewMode === 'surface') h.surfaceGrid[x][y] = null;
+                    else h.utilityGrid[x][y] = { power: false, cooling: false, nodeType: null, damaged: false };
+                } else if (item.category === 'surface') {
+                    if (!h.surfaceGrid[x][y]) {
+                        h.surfaceGrid[x][y] = { type: item.id, active: false, wear: 0, damaged: false };
+                        state.cash -= item.cost;
+                    } else { logEvent("Collision! Demolish existing rack first.", "alert"); }
+                } else if (item.category === 'utility') {
+                    const u = h.utilityGrid[x][y];
+                    if (item.layer === 'power') u.power = true;
+                    if (item.layer === 'cooling') u.cooling = true;
+                    if (item.powerGen || item.coolingGen) u.nodeType = item.id;
+                    state.cash -= item.cost;
+                }
                 recalculateInfrastructure();
-                logEvent("Saved game state loaded successfully.", "success");
-            } catch (e) {
-                logEvent("Corrupted save file detected.", "alert");
-            }
+            });
+        }
+
+        function logEvent(msg, type = 'info') {
+            const log = document.getElementById('event-log'); const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`; entry.innerText = msg; log.prepend(entry);
+            if (log.children.length > 6) log.removeChild(log.lastChild);
         }
 
         function gameLoop() {
-            state.animTimer += 0.05;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (state.viewMode === 'region') {
-                drawRegionMap();
-            } else {
-                drawIsometricGrid();
-                if (state.viewMode === 'surface') {
-                    drawSurfaceLayer();
-                } else {
-                    drawUtilityLayer();
-                }
-            }
-
-            drawTargetAndDragHighlights();
+            state.animTimer += 0.05; ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (state.viewMode === 'region') drawRegionMap();
+            else { drawGrid(); if (state.viewMode === 'surface') drawSurface(); else drawUtility(); }
             requestAnimationFrame(gameLoop);
         }
 
-        function drawTargetAndDragHighlights() {
-            if (state.viewMode === 'region' || !state.hoverTile) return;
-
-            const hall = state.hallsData[state.activeHallIndex];
-            if (!hall) return;
-
-            if (state.dragStartTile && state.selectedItem) {
-                const line = getLineTiles(state.dragStartTile, state.hoverTile);
-                const item = ITEMS[state.selectedItem];
-
-                let runningCost = 0;
-
-                line.forEach((t, idx) => {
-                    const pos = gridToScreen(t.x, t.y);
-                    const isCollision = (item.category === 'surface' && hall.surfaceGrid[t.x][t.y]);
-                    const isAffordable = (runningCost + item.cost) <= state.cash && !isCollision;
-                    if (isAffordable) runningCost += item.cost;
-
-                    ctx.beginPath();
-                    ctx.moveTo(pos.x, pos.y);
-                    ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
-                    ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                    ctx.closePath();
-
-                    ctx.fillStyle = isAffordable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.5)';
-                    ctx.fill();
-                    ctx.strokeStyle = isAffordable ? '#10b981' : '#ef4444';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    if (idx === line.length - 1) {
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 12px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(`x${line.length} ($${(item.cost * line.length).toLocaleString()})`, pos.x, pos.y - 10);
-                    }
-                });
-                return;
-            }
-
-            const { x, y } = state.hoverTile;
-            const pos = gridToScreen(x, y);
-
-            if (state.selectedItem === 'upgrade') {
-                const surf = hall.surfaceGrid[x][y];
-                if (surf) {
-                    const h = 24 + ((surf.level || 1) - 1) * 6;
-                    ctx.strokeStyle = '#3b82f6';
-                    ctx.lineWidth = 3;
-
-                    ctx.beginPath();
-                    ctx.moveTo(pos.x, pos.y - h - 4);
-                    ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2 - h);
-                    ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2 + 4);
-                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT + 4);
-                    ctx.lineTo(pos.x - TILE_WIDTH / 2 - 4, pos.y + TILE_HEIGHT / 2 + 4);
-                    ctx.lineTo(pos.x - TILE_WIDTH / 2 - 4, pos.y + TILE_HEIGHT / 2 - h);
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#60a5fa';
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`UPGRADE ➔ Lvl ${(surf.level || 1) + 1}`, pos.x, pos.y - h - 10);
-                }
-            } else if (state.selectedItem === 'repair') {
-                const surf = hall.surfaceGrid[x][y];
-                const util = hall.utilityGrid[x][y];
-                const isDamaged = (surf && surf.damaged) || util.damaged;
-
-                if (isDamaged) {
-                    ctx.strokeStyle = '#f59e0b';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(pos.x, pos.y - 10);
-                    ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2);
-                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT + 10);
-                    ctx.lineTo(pos.x - TILE_WIDTH / 2 - 4, pos.y + TILE_HEIGHT / 2);
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#f59e0b';
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('REPAIR TARGET', pos.x, pos.y - 15);
-                }
-            }
-        }
-
         function drawRegionMap() {
-            const size = state.regionGridSize;
-            const scaleX = 120, scaleY = 60;
-
-            for (let x = 0; x < size; x++) {
-                for (let y = 0; y < size; y++) {
-                    const pos = gridToScreen(x, y, scaleX, scaleY);
+            for (let x = 0; x < 6; x++) {
+                for (let y = 0; y < 6; y++) {
+                    const pos = gridToScreen(x, y, 120, 60);
                     const unlocked = state.regionGrid[x] && state.regionGrid[x][y];
-                    const status = checkSectorStatus(x, y);
-
-                    ctx.beginPath();
-                    ctx.moveTo(pos.x, pos.y);
-                    ctx.lineTo(pos.x + scaleX / 2, pos.y + scaleY / 2);
-                    ctx.lineTo(pos.x, pos.y + scaleY);
-                    ctx.lineTo(pos.x - scaleX / 2, pos.y + scaleY / 2);
-                    ctx.closePath();
-
-                    if (unlocked) {
-                        ctx.fillStyle = status.damaged ? 'rgba(239, 68, 68, 0.25)' : '#1e293b';
-                        ctx.fill();
-                        ctx.strokeStyle = status.damaged ? '#ef4444' : '#3b82f6';
-                        ctx.lineWidth = status.damaged ? 3 : 2;
-                        ctx.stroke();
-
-                        ctx.fillStyle = status.damaged ? '#fca5a5' : '#60a5fa';
-                        ctx.font = 'bold 11px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(`Server Hall (${x},${y})`, pos.x, pos.y + scaleY / 2 - 4);
-                        
-                        ctx.fillStyle = status.damaged ? '#ef4444' : '#10b981';
-                        ctx.font = 'bold 10px sans-serif';
-                        ctx.fillText(status.damaged ? '⚠ INCIDENT REQ REPAIR' : 'Active Sector', pos.x, pos.y + scaleY / 2 + 10);
-                    } else {
-                        ctx.fillStyle = '#0d131c';
-                        ctx.fill();
-                        ctx.strokeStyle = '#243144';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-
-                        ctx.fillStyle = '#475569';
-                        ctx.font = 'bold 11px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(`Sector (${x},${y})`, pos.x, pos.y + scaleY / 2 + 3);
-                    }
+                    ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x + 60, pos.y + 30);
+                    ctx.lineTo(pos.x, pos.y + 60); ctx.lineTo(pos.x - 60, pos.y + 30); ctx.closePath();
+                    ctx.fillStyle = unlocked ? '#1e293b' : '#0d131c'; ctx.fill();
+                    ctx.strokeStyle = unlocked ? '#3b82f6' : '#1e293b'; ctx.stroke();
                 }
             }
         }
 
-        function drawIsometricGrid() {
-            for (let x = 0; x < state.hallGridSize; x++) {
-                for (let y = 0; y < state.hallGridSize; y++) {
+        function drawGrid() {
+            for (let x = 0; x < 10; x++) {
+                for (let y = 0; y < 10; y++) {
                     const pos = gridToScreen(x, y);
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(pos.x, pos.y);
-                    ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
-                    ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                    ctx.closePath();
-
-                    ctx.fillStyle = (state.viewMode === 'surface') ? '#111827' : '#090d14';
-                    ctx.fill();
-                    ctx.strokeStyle = '#1f2937';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x + 32, pos.y + 16);
+                    ctx.lineTo(pos.x, pos.y + 32); ctx.lineTo(pos.x - 32, pos.y + 16); ctx.closePath();
+                    ctx.fillStyle = '#0f172a'; ctx.fill(); ctx.strokeStyle = '#1e293b'; ctx.stroke();
                 }
             }
         }
 
-        function drawSurfaceLayer() {
-            const hall = state.hallsData[state.activeHallIndex];
-            if (!hall) return;
-
-            for (let x = 0; x < state.hallGridSize; x++) {
-                for (let y = 0; y < state.hallGridSize; y++) {
-                    const tile = hall.surfaceGrid[x][y];
-                    const util = hall.utilityGrid[x][y];
-                    const pos = gridToScreen(x, y);
-
-                    // Visual utility connectors flowing into active racks
-                    if (tile && tile.active && !tile.damaged) {
-                        ctx.strokeStyle = '#38bdf8';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(pos.x - 10, pos.y + TILE_HEIGHT / 2);
-                        ctx.lineTo(pos.x - 10, pos.y + TILE_HEIGHT / 2 - 12);
-                        ctx.stroke();
-
-                        ctx.strokeStyle = '#fbbf24';
-                        ctx.beginPath();
-                        ctx.moveTo(pos.x + 10, pos.y + TILE_HEIGHT / 2);
-                        ctx.lineTo(pos.x + 10, pos.y + TILE_HEIGHT / 2 - 12);
-                        ctx.stroke();
-                    }
-
-                    if (tile) {
-                        const h = 24 + ((tile.level || 1) - 1) * 6;
-                        let topColor = '#3b82f6', sideColor = '#1d4ed8';
-
-                        if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
-                        if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
-                        if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
-
-                        if (tile.damaged) {
-                            topColor = '#ef4444'; sideColor = '#991b1b';
-                        } else if (!tile.active && tile.type !== 'ups') {
-                            topColor = '#4b5563'; sideColor = '#1f2937';
-                        }
-
-                        ctx.beginPath();
-                        ctx.moveTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
-                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT - h);
-                        ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
-                        ctx.fillStyle = sideColor;
-                        ctx.fill(); ctx.stroke();
-
-                        ctx.beginPath();
-                        ctx.moveTo(pos.x, pos.y + TILE_HEIGHT);
-                        ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                        ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
-                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT - h);
-                        ctx.fillStyle = '#0f172a';
-                        ctx.fill(); ctx.stroke();
-
-                        ctx.beginPath();
-                        ctx.moveTo(pos.x, pos.y - h);
-                        ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
-                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT - h);
-                        ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
-                        ctx.fillStyle = topColor;
-                        ctx.fill(); ctx.stroke();
-
-                        if (tile.active && !tile.damaged) {
-                            const pulse = Math.sin(state.animTimer * 5) * 0.5 + 0.5;
-                            ctx.fillStyle = `rgba(52, 211, 153, ${0.4 + pulse * 0.6})`;
-                            ctx.fillRect(pos.x - 4, pos.y + TILE_HEIGHT / 2 - h + 6, 3, 3);
-                            ctx.fillStyle = `rgba(96, 165, 250, ${0.4 + pulse * 0.6})`;
-                            ctx.fillRect(pos.x + 2, pos.y + TILE_HEIGHT / 2 - h + 6, 3, 3);
+        function drawSurface() {
+            const h = state.hallsData[state.activeHallIndex]; if (!h) return;
+            for (let x = 0; x < 10; x++) {
+                for (let y = 0; y < 10; y++) {
+                    const s = h.surfaceGrid[x][y]; const pos = gridToScreen(x, y);
+                    if (s) {
+                        ctx.fillStyle = s.type === 'gpu_rack' ? '#8b5cf6' : (s.type === 'quantum' ? '#06b6d4' : '#3b82f6');
+                        ctx.fillRect(pos.x - 12, pos.y - 10, 24, 20);
+                        if (s.wear > 0.3) {
+                            ctx.fillStyle = '#f59e0b'; ctx.font = '9px sans-serif';
+                            ctx.fillText(`${Math.round(s.wear * 100)}% wear`, pos.x - 18, pos.y - 12);
                         }
                     }
                 }
             }
         }
 
-        // --- SUB-GRID AUTO-CONNECT & DUAL-TRACK PIPELINES ---
-        function drawUtilityLayer() {
-            const hall = state.hallsData[state.activeHallIndex];
-            if (!hall) return;
-
-            for (let x = 0; x < state.hallGridSize; x++) {
-                for (let y = 0; y < state.hallGridSize; y++) {
-                    const util = hall.utilityGrid[x][y];
-                    const pos = gridToScreen(x, y);
-
-                    // Dual parallel offsets so cooling & power never collide
-                    const pOffX = 6, pOffY = -3;
-                    const cOffX = -6, cOffY = 3;
-
-                    // 1. Render Auto-Connected Power Lines
-                    if (util.power || util.nodeType === 'power_plant') {
-                        const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'power');
-                        drawConnectedPipe(pos.x + pOffX, pos.y + TILE_HEIGHT / 2 + pOffY, neighbors, util.damaged ? '#ef4444' : '#f59e0b', util.damaged ? '#991b1b' : '#b45309');
-                        
-                        // Animated Flow Particle
-                        if (!util.damaged) {
-                            const flow = (state.animTimer * 20) % 20;
-                            ctx.fillStyle = '#fde68a';
-                            ctx.beginPath();
-                            ctx.arc(pos.x + pOffX + (flow - 10) * 0.4, pos.y + TILE_HEIGHT / 2 + pOffY + (flow - 10) * 0.2, 2.5, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    }
-
-                    // 2. Render Auto-Connected Cooling Pipes
-                    if (util.cooling || util.nodeType === 'chiller') {
-                        const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'cooling');
-                        drawConnectedPipe(pos.x + cOffX, pos.y + TILE_HEIGHT / 2 + cOffY, neighbors, util.damaged ? '#ef4444' : '#06b6d4', util.damaged ? '#991b1b' : '#0891b2');
-
-                        // Animated Coolant Pulse
-                        if (!util.damaged) {
-                            const flow = (state.animTimer * 15) % 20;
-                            ctx.fillStyle = '#a5f3fc';
-                            ctx.beginPath();
-                            ctx.arc(pos.x + cOffX + (flow - 10) * 0.4, pos.y + TILE_HEIGHT / 2 + cOffY + (flow - 10) * 0.2, 2.5, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    }
-
-                    // 3. Central Utility Stations
-                    if (util.nodeType) {
-                        ctx.beginPath();
-                        ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 10, 0, Math.PI * 2);
-                        ctx.fillStyle = util.damaged ? '#ef4444' : (util.nodeType === 'power_plant' ? '#f59e0b' : '#3b82f6');
-                        ctx.fill();
-                        ctx.strokeStyle = '#ffffff';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                    }
+        function drawUtility() {
+            const h = state.hallsData[state.activeHallIndex]; if (!h) return;
+            for (let x = 0; x < 10; x++) {
+                for (let y = 0; y < 10; y++) {
+                    const u = h.utilityGrid[x][y]; const pos = gridToScreen(x, y);
+                    if (u.power) { ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(pos.x + 4, pos.y + 16, 3, 0, Math.PI*2); ctx.fill(); }
+                    if (u.cooling) { ctx.fillStyle = '#06b6d4'; ctx.beginPath(); ctx.arc(pos.x - 4, pos.y + 16, 3, 0, Math.PI*2); ctx.fill(); }
                 }
-            }
-        }
-
-        function getConnectedNeighbors(grid, x, y, type) {
-            const check = (nx, ny) => {
-                if (nx < 0 || nx >= state.hallGridSize || ny < 0 || ny >= state.hallGridSize) return false;
-                const u = grid[nx][ny];
-                if (type === 'power') return u.power || u.nodeType === 'power_plant';
-                if (type === 'cooling') return u.cooling || u.nodeType === 'chiller';
-                return false;
-            };
-
-            return {
-                N: check(x, y - 1),
-                S: check(x, y + 1),
-                E: check(x + 1, y),
-                W: check(x - 1, y)
-            };
-        }
-
-        function drawConnectedPipe(cx, cy, n, strokeColor, glowColor) {
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-
-            const lenX = TILE_WIDTH / 4;
-            const lenY = TILE_HEIGHT / 4;
-
-            // Center hub
-            ctx.beginPath();
-            ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = strokeColor;
-            ctx.fill();
-
-            // Adjacency connections
-            if (n.N) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + lenX, cy - lenY); ctx.stroke(); }
-            if (n.S) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - lenX, cy + lenY); ctx.stroke(); }
-            if (n.E) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + lenX, cy + lenY); ctx.stroke(); }
-            if (n.W) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - lenX, cy - lenY); ctx.stroke(); }
-
-            // Default stub if standalone
-            if (!n.N && !n.S && !n.E && !n.W) {
-                ctx.beginPath(); ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy); ctx.stroke();
             }
         }
     </script>
