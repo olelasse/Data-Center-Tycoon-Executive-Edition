@@ -310,7 +310,6 @@
             outline: none;
         }
 
-        /* Hover Tooltip Overlay */
         #tile-tooltip {
             position: absolute;
             display: none;
@@ -318,10 +317,11 @@
             background: rgba(15, 23, 42, 0.95);
             border: 1px solid var(--accent-blue);
             padding: 8px 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 0.75rem;
             z-index: 50;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -474,7 +474,6 @@
             panX: 0,
             panY: 0,
             
-            // Interaction State
             dragStartTile: null,
             hoverTile: null,
             isPanDragging: false,
@@ -713,7 +712,7 @@
 
             tooltip.style.display = 'block';
             tooltip.style.left = `${screenX + 15}px`;
-            tooltip.style.top = `${screenX + 15}px`;
+            tooltip.style.top = `${screenY + 15}px`;
 
             const { x, y } = state.hoverTile;
 
@@ -731,7 +730,6 @@
                 return;
             }
 
-            // Hall level tooltips
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
 
@@ -742,26 +740,50 @@
 
             if (state.selectedItem) {
                 const item = ITEMS[state.selectedItem];
+                let placeableCount = 0;
+                let runningCost = 0;
+
+                lineTiles.forEach(t => {
+                    if (runningCost + item.cost <= state.cash) {
+                        runningCost += item.cost;
+                        placeableCount++;
+                    }
+                });
+
                 const totalCost = item.cost * lineTiles.length;
-                const affordable = state.cash >= totalCost;
+                const fullyAffordable = state.cash >= totalCost;
 
                 tooltip.innerHTML = `
-                    <strong>${item.name} ${lineTiles.length > 1 ? `x${lineTiles.length}` : ''}</strong><br>
-                    Total Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${totalCost}</span><br>
-                    Status: ${affordable ? 'Affordable' : 'Insufficient Cash!'}
+                    <strong>${item.name}</strong><br>
+                    Selected: <strong>${lineTiles.length} units</strong><br>
+                    Cost: <span style="color:${fullyAffordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${totalCost.toLocaleString()}</span><br>
+                    ${!fullyAffordable ? `<span style="color:var(--accent-red)">⚠ Can only afford ${placeableCount} / ${lineTiles.length}</span>` : '<span style="color:var(--accent-green)">✓ Ready to build</span>'}
                 `;
             } else {
                 const surf = hall.surfaceGrid[x][y];
                 const util = hall.utilityGrid[x][y];
                 
-                let info = `Tile (${x}, ${y})<br>`;
+                let info = `<strong>Tile (${x}, ${y}) Status:</strong><br>`;
+                
                 if (surf) {
-                    const damagedStr = surf.damaged ? ' <span style="color:var(--accent-red)">[DAMAGED]</span>' : '';
-                    info += `Surface: ${ITEMS[surf.type].name} (Lvl ${surf.level || 1})${damagedStr}<br>`;
+                    info += `• Surface: ${ITEMS[surf.type].name} (Level ${surf.level || 1})<br>`;
+                    if (surf.damaged) {
+                        info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair Tool ($${ITEMS.repair.cost})</span><br>`;
+                    } else {
+                        info += `<span style="color:var(--accent-blue)">💡 Select Upgrade Tool ($${ITEMS.upgrade.cost}) to boost yield</span><br>`;
+                    }
                 }
-                if (util.nodeType) info += `Node: ${ITEMS[util.nodeType].name}<br>`;
-                if (util.power) info += `⚡ Power Line Active<br>`;
-                if (util.cooling) info += `❄️ Cooling Pipe Active<br>`;
+                
+                if (util.nodeType) {
+                    info += `• Sub-Node: ${ITEMS[util.nodeType].name}<br>`;
+                    if (util.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED SUB-GRID! Select Repair Tool</span><br>`;
+                }
+                if (util.power) info += `• ⚡ Conduit Line Connected<br>`;
+                if (util.cooling) info += `• ❄️ Liquid Pipe Connected<br>`;
+
+                if (!surf && !util.nodeType && !util.power && !util.cooling) {
+                    info += `<span style="color:var(--text-muted)">Empty Plot. Select a tool to build.</span>`;
+                }
 
                 tooltip.innerHTML = info;
             }
@@ -790,21 +812,20 @@
 
             line.forEach(t => {
                 const { x, y } = t;
+                if (state.cash < item.cost && item.id !== 'demolish') return;
 
                 if (item.id === 'repair') {
                     const surf = hall.surfaceGrid[x][y];
                     const util = hall.utilityGrid[x][y];
                     if ((surf && surf.damaged) || util.damaged) {
-                        if (state.cash >= item.cost) {
-                            state.cash -= item.cost;
-                            if (surf) surf.damaged = false;
-                            util.damaged = false;
-                            count++;
-                        }
+                        state.cash -= item.cost;
+                        if (surf) surf.damaged = false;
+                        util.damaged = false;
+                        count++;
                     }
                 } else if (item.id === 'upgrade') {
                     const surf = hall.surfaceGrid[x][y];
-                    if (surf && state.cash >= item.cost) {
+                    if (surf) {
                         surf.level = (surf.level || 1) + 1;
                         state.cash -= item.cost;
                         count++;
@@ -814,25 +835,25 @@
                     else hall.utilityGrid[x][y] = { power: false, cooling: false, nodeType: null, level: 1, damaged: false };
                     count++;
                 } else if (item.category === 'surface') {
-                    if (!hall.surfaceGrid[x][y] && state.cash >= item.cost) {
+                    if (!hall.surfaceGrid[x][y]) {
                         hall.surfaceGrid[x][y] = { type: item.id, active: false, level: 1, damaged: false };
                         state.cash -= item.cost;
                         count++;
                     }
                 } else if (item.category === 'utility') {
                     const util = hall.utilityGrid[x][y];
-                    if (state.cash >= item.cost) {
-                        if (item.layer === 'power') util.power = true;
-                        if (item.layer === 'cooling') util.cooling = true;
-                        if (item.powerGen || item.coolingGen) util.nodeType = item.id;
-                        state.cash -= item.cost;
-                        count++;
-                    }
+                    if (item.layer === 'power') util.power = true;
+                    if (item.layer === 'cooling') util.cooling = true;
+                    if (item.powerGen || item.coolingGen) util.nodeType = item.id;
+                    state.cash -= item.cost;
+                    count++;
                 }
             });
 
             if (count > 0) {
-                logEvent(`Applied ${item.name} to ${count} tiles.`, "success");
+                logEvent(`Constructed ${count}x ${item.name}.`, "success");
+            } else if (line.length > 0 && state.cash < item.cost) {
+                logEvent(`Insufficient capital to construct requested elements!`, "alert");
             }
             recalculateInfrastructure();
         }
@@ -1069,10 +1090,14 @@
 
             const line = getLineTiles(state.dragStartTile, state.hoverTile);
             const item = ITEMS[state.selectedItem];
-            const affordable = state.cash >= item.cost * line.length;
 
-            line.forEach(t => {
+            let runningCost = 0;
+
+            line.forEach((t, idx) => {
                 const pos = gridToScreen(t.x, t.y);
+                const isAffordable = (runningCost + item.cost) <= state.cash;
+                if (isAffordable) runningCost += item.cost;
+
                 ctx.beginPath();
                 ctx.moveTo(pos.x, pos.y);
                 ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
@@ -1080,10 +1105,18 @@
                 ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
                 ctx.closePath();
 
-                ctx.fillStyle = affordable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+                ctx.fillStyle = isAffordable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.5)';
                 ctx.fill();
-                ctx.strokeStyle = affordable ? '#10b981' : '#ef4444';
+                ctx.strokeStyle = isAffordable ? '#10b981' : '#ef4444';
+                ctx.lineWidth = 2;
                 ctx.stroke();
+
+                if (idx === line.length - 1) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`x${line.length} ($${(item.cost * line.length).toLocaleString()})`, pos.x, pos.y - 10);
+                }
             });
         }
 
