@@ -211,9 +211,9 @@
             position: absolute;
             bottom: 15px;
             right: 15px;
-            width: 320px;
+            width: 330px;
             max-height: 140px;
-            background: rgba(18, 24, 32, 0.85);
+            background: rgba(18, 24, 32, 0.88);
             border: 1px solid var(--panel-border);
             backdrop-filter: blur(4px);
             border-radius: 4px;
@@ -415,7 +415,7 @@
             <div id="tile-tooltip"></div>
 
             <div id="event-log">
-                <div class="log-entry">Facility initialized. Select tool & drag line to multi-place!</div>
+                <div class="log-entry">Facility initialized. Build conduits & connect infrastructure.</div>
             </div>
         </div>
     </div>
@@ -439,7 +439,7 @@
         const ITEMS = {
             repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix damaged or broken components.' },
             upgrade: { id: 'upgrade', name: 'Upgrade Node', cost: 500, category: 'tool', desc: 'Upgrade rack or utility capacity by +50%.' },
-            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component.' },
+            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component (required to rebuild racks).' },
             
             hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector.' },
             
@@ -477,7 +477,8 @@
             dragStartTile: null,
             hoverTile: null,
             isPanDragging: false,
-            panDragStart: { x: 0, y: 0 }
+            panDragStart: { x: 0, y: 0 },
+            animTimer: 0
         };
 
         let canvas, ctx;
@@ -519,7 +520,7 @@
             document.getElementById('new-game-modal').style.display = 'none';
             setViewMode('region');
             recalculateInfrastructure();
-            logEvent(`Data Center site launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked.`, "success");
+            logEvent(`Data Center launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
         }
 
         function initializeHallData(rx, ry) {
@@ -703,6 +704,26 @@
             });
         }
 
+        function checkSectorStatus(rx, ry) {
+            const key = `${rx}_${ry}`;
+            const hall = state.hallsData[key];
+            if (!hall) return { active: false, damaged: false };
+
+            let damaged = false;
+            for (let x = 0; x < state.hallGridSize; x++) {
+                for (let y = 0; y < state.hallGridSize; y++) {
+                    const s = hall.surfaceGrid[x][y];
+                    const u = hall.utilityGrid[x][y];
+                    if ((s && s.damaged) || (u && u.damaged)) {
+                        damaged = true;
+                        break;
+                    }
+                }
+                if (damaged) break;
+            }
+            return { active: true, damaged };
+        }
+
         function updateTooltip(screenX, screenY) {
             const tooltip = document.getElementById('tile-tooltip');
             if (!state.hoverTile) {
@@ -719,7 +740,8 @@
             if (state.viewMode === 'region') {
                 const unlocked = state.regionGrid[x] && state.regionGrid[x][y];
                 if (unlocked) {
-                    tooltip.innerHTML = `<strong>Server Hall (${x}, ${y})</strong><br><span style="color:var(--accent-green)">Click to Enter Sector</span>`;
+                    const status = checkSectorStatus(x, y);
+                    tooltip.innerHTML = `<strong>Server Hall (${x}, ${y})</strong><br>${status.damaged ? '<span style="color:var(--accent-red)">⚠ INCIDENT IN PROGRESS</span>' : '<span style="color:var(--accent-green)">✓ Operational</span>'}<br><span style="color:var(--accent-blue)">Click to Enter Sector</span>`;
                 } else if (state.selectedItem === 'hall_node') {
                     const cost = ITEMS.hall_node.cost;
                     const affordable = state.cash >= cost;
@@ -741,7 +763,6 @@
             if (state.selectedItem) {
                 const item = ITEMS[state.selectedItem];
                 
-                // Special Tool: Upgrade preview calculations
                 if (item.id === 'upgrade') {
                     const surf = hall.surfaceGrid[x][y];
                     if (surf) {
@@ -754,20 +775,19 @@
                         tooltip.innerHTML = `
                             <strong>Upgrade Targeted Rack (${x}, ${y})</strong><br>
                             Type: <strong>${baseItem.name}</strong><br>
-                            Level Upgrade: <span style="color:var(--accent-blue)">Lvl ${curLvl} ➔ Lvl ${nextLvl}</span><br>
-                            Power Req: ${baseItem.powerReq * curLvl}kW ➔ <strong>${baseItem.powerReq * nextLvl}kW</strong><br>
-                            Cooling Load: ${baseItem.coolingReq * curLvl}BTU ➔ <strong>${baseItem.coolingReq * nextLvl}BTU</strong><br>
+                            Level: <span style="color:var(--accent-blue)">Lvl ${curLvl} ➔ Lvl ${nextLvl}</span><br>
+                            Power: ${baseItem.powerReq * curLvl}kW ➔ <strong>${baseItem.powerReq * nextLvl}kW</strong><br>
+                            Cooling: ${baseItem.coolingReq * curLvl}BTU ➔ <strong>${baseItem.coolingReq * nextLvl}BTU</strong><br>
                             Yield: +$${baseItem.rev * curLvl}/mo ➔ <strong style="color:var(--accent-green)">+$${baseItem.rev * nextLvl}/mo</strong><br>
-                            Upgrade Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${cost}</span>
+                            Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${cost}</span>
                         `;
                         return;
                     } else {
-                        tooltip.innerHTML = `<strong>Upgrade Tool</strong><br><span style="color:var(--text-muted)">Hover over a rack to preview upgrade stats.</span>`;
+                        tooltip.innerHTML = `<strong>Upgrade Tool</strong><br><span style="color:var(--text-muted)">Hover over a rack to preview upgrades.</span>`;
                         return;
                     }
                 }
 
-                // Special Tool: Repair Preview
                 if (item.id === 'repair') {
                     const surf = hall.surfaceGrid[x][y];
                     const util = hall.utilityGrid[x][y];
@@ -777,17 +797,26 @@
                         const affordable = state.cash >= item.cost;
                         tooltip.innerHTML = `
                             <strong style="color:var(--accent-amber)">Repair Target Locked (${x}, ${y})</strong><br>
-                            Component: <strong>${surf ? ITEMS[surf.type].name : 'Sub-grid Conduit'}</strong><br>
+                            Component: <strong>${surf ? ITEMS[surf.type].name : 'Sub-grid Pipeline'}</strong><br>
                             Status: <span style="color:var(--accent-red)">DAMAGED / INOPERATIVE</span><br>
-                            Repair Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${item.cost}</span>
+                            Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${item.cost}</span>
                         `;
                     } else {
-                        tooltip.innerHTML = `<strong>Repair Tool Active</strong><br><span style="color:var(--text-muted)">Tile is currently functioning normally.</span>`;
+                        tooltip.innerHTML = `<strong>Repair Tool</strong><br><span style="color:var(--text-muted)">Tile is functioning normally.</span>`;
                     }
                     return;
                 }
 
-                // Standard Multi-Placement Tracker
+                // Check for collision on single placement hover
+                if (item.category === 'surface' && hall.surfaceGrid[x][y]) {
+                    tooltip.innerHTML = `
+                        <strong style="color:var(--accent-red)">Tile Occupied!</strong><br>
+                        Space has <strong>${ITEMS[hall.surfaceGrid[x][y].type].name}</strong>.<br>
+                        <span style="color:var(--accent-amber)">Must Demolish existing rack first!</span>
+                    `;
+                    return;
+                }
+
                 let placeableCount = 0;
                 let runningCost = 0;
 
@@ -814,20 +843,13 @@
                 let info = `<strong>Tile (${x}, ${y}) Status:</strong><br>`;
                 
                 if (surf) {
-                    info += `• Surface: ${ITEMS[surf.type].name} (Level ${surf.level || 1})<br>`;
-                    if (surf.damaged) {
-                        info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair Tool ($${ITEMS.repair.cost})</span><br>`;
-                    } else {
-                        info += `<span style="color:var(--accent-blue)">💡 Select Upgrade Tool ($${ITEMS.upgrade.cost}) to boost yield</span><br>`;
-                    }
+                    info += `• Surface: ${ITEMS[surf.type].name} (Lvl ${surf.level || 1})<br>`;
+                    if (surf.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair Tool</span><br>`;
                 }
                 
-                if (util.nodeType) {
-                    info += `• Sub-Node: ${ITEMS[util.nodeType].name}<br>`;
-                    if (util.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED SUB-GRID! Select Repair Tool</span><br>`;
-                }
-                if (util.power) info += `• ⚡ Conduit Line Connected<br>`;
-                if (util.cooling) info += `• ❄️ Liquid Pipe Connected<br>`;
+                if (util.nodeType) info += `• Sub-Node: ${ITEMS[util.nodeType].name}<br>`;
+                if (util.power) info += `• ⚡ Power Conduit Connected<br>`;
+                if (util.cooling) info += `• ❄️ Cooling Line Connected<br>`;
 
                 if (!surf && !util.nodeType && !util.power && !util.cooling) {
                     info += `<span style="color:var(--text-muted)">Empty Plot. Select a tool to build.</span>`;
@@ -857,6 +879,7 @@
             if (!hall) return;
 
             let count = 0;
+            let blockedByCollision = 0;
 
             line.forEach(t => {
                 const { x, y } = t;
@@ -887,6 +910,8 @@
                         hall.surfaceGrid[x][y] = { type: item.id, active: false, level: 1, damaged: false };
                         state.cash -= item.cost;
                         count++;
+                    } else {
+                        blockedByCollision++;
                     }
                 } else if (item.category === 'utility') {
                     const util = hall.utilityGrid[x][y];
@@ -898,8 +923,12 @@
                 }
             });
 
+            if (blockedByCollision > 0) {
+                logEvent(`Cannot place rack on occupied tiles! Demolish space first.`, "alert");
+            }
+
             if (count > 0) {
-                logEvent(`Constructed/Updated ${count}x ${item.name}.`, "success");
+                logEvent(`Constructed ${count}x ${item.name}.`, "success");
             } else if (line.length > 0 && state.cash < item.cost) {
                 logEvent(`Insufficient capital to construct requested elements!`, "alert");
             }
@@ -1077,9 +1106,9 @@
                         logEvent(`DISASTER! Electrical Fire damaged rack at sector ${randomHallKey} (${rx}, ${ry})!`, "alert");
                     }
                 } else if (selected === 'maintenance') {
-                    if (hall.utilityGrid[rx][ry].nodeType) {
+                    if (hall.utilityGrid[rx][ry].nodeType || hall.utilityGrid[rx][ry].power || hall.utilityGrid[rx][ry].cooling) {
                         hall.utilityGrid[rx][ry].damaged = true;
-                        logEvent(`PIPE BURST! Sub-utility broken at sector ${randomHallKey} (${rx}, ${ry})! Use Repair Tool!`, "alert");
+                        logEvent(`PIPE BURST! Utility damaged at sector ${randomHallKey} (${rx}, ${ry})! Select Repair Tool!`, "alert");
                     }
                 } else {
                     logEvent("Market Surge! High demand boosts computing yield.", "success");
@@ -1116,6 +1145,7 @@
         }
 
         function gameLoop() {
+            state.animTimer += 0.05;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (state.viewMode === 'region') {
@@ -1139,7 +1169,6 @@
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
 
-            // Multi-placement line preview drag
             if (state.dragStartTile && state.selectedItem) {
                 const line = getLineTiles(state.dragStartTile, state.hoverTile);
                 const item = ITEMS[state.selectedItem];
@@ -1148,7 +1177,8 @@
 
                 line.forEach((t, idx) => {
                     const pos = gridToScreen(t.x, t.y);
-                    const isAffordable = (runningCost + item.cost) <= state.cash;
+                    const isCollision = (item.category === 'surface' && hall.surfaceGrid[t.x][t.y]);
+                    const isAffordable = (runningCost + item.cost) <= state.cash && !isCollision;
                     if (isAffordable) runningCost += item.cost;
 
                     ctx.beginPath();
@@ -1174,7 +1204,6 @@
                 return;
             }
 
-            // Target Hover Highlight System for Repair / Upgrade Tools
             const { x, y } = state.hoverTile;
             const pos = gridToScreen(x, y);
 
@@ -1185,7 +1214,6 @@
                     ctx.strokeStyle = '#3b82f6';
                     ctx.lineWidth = 3;
 
-                    // Isometric selection box wrapper surrounding the 3D rack
                     ctx.beginPath();
                     ctx.moveTo(pos.x, pos.y - h - 4);
                     ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2 - h);
@@ -1233,6 +1261,7 @@
                 for (let y = 0; y < size; y++) {
                     const pos = gridToScreen(x, y, scaleX, scaleY);
                     const unlocked = state.regionGrid[x] && state.regionGrid[x][y];
+                    const status = checkSectorStatus(x, y);
 
                     ctx.beginPath();
                     ctx.moveTo(pos.x, pos.y);
@@ -1241,22 +1270,31 @@
                     ctx.lineTo(pos.x - scaleX / 2, pos.y + scaleY / 2);
                     ctx.closePath();
 
-                    ctx.fillStyle = unlocked ? '#1e293b' : '#0d131c';
-                    ctx.fill();
-                    ctx.strokeStyle = unlocked ? '#3b82f6' : '#243144';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    ctx.fillStyle = unlocked ? '#60a5fa' : '#475569';
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    
                     if (unlocked) {
-                        ctx.fillText(`Server Hall (${x},${y})`, pos.x, pos.y + scaleY / 2 - 2);
-                        ctx.fillStyle = '#10b981';
-                        ctx.font = '10px sans-serif';
-                        ctx.fillText('Active Sector', pos.x, pos.y + scaleY / 2 + 12);
+                        ctx.fillStyle = status.damaged ? 'rgba(239, 68, 68, 0.25)' : '#1e293b';
+                        ctx.fill();
+                        ctx.strokeStyle = status.damaged ? '#ef4444' : '#3b82f6';
+                        ctx.lineWidth = status.damaged ? 3 : 2;
+                        ctx.stroke();
+
+                        ctx.fillStyle = status.damaged ? '#fca5a5' : '#60a5fa';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`Server Hall (${x},${y})`, pos.x, pos.y + scaleY / 2 - 4);
+                        
+                        ctx.fillStyle = status.damaged ? '#ef4444' : '#10b981';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.fillText(status.damaged ? '⚠ INCIDENT REQ REPAIR' : 'Active Sector', pos.x, pos.y + scaleY / 2 + 10);
                     } else {
+                        ctx.fillStyle = '#0d131c';
+                        ctx.fill();
+                        ctx.strokeStyle = '#243144';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#475569';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'center';
                         ctx.fillText(`Sector (${x},${y})`, pos.x, pos.y + scaleY / 2 + 3);
                     }
                 }
@@ -1291,7 +1329,24 @@
             for (let x = 0; x < state.hallGridSize; x++) {
                 for (let y = 0; y < state.hallGridSize; y++) {
                     const tile = hall.surfaceGrid[x][y];
+                    const util = hall.utilityGrid[x][y];
                     const pos = gridToScreen(x, y);
+
+                    // Visual utility connectors flowing into active racks
+                    if (tile && tile.active && !tile.damaged) {
+                        ctx.strokeStyle = '#38bdf8';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x - 10, pos.y + TILE_HEIGHT / 2);
+                        ctx.lineTo(pos.x - 10, pos.y + TILE_HEIGHT / 2 - 12);
+                        ctx.stroke();
+
+                        ctx.strokeStyle = '#fbbf24';
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x + 10, pos.y + TILE_HEIGHT / 2);
+                        ctx.lineTo(pos.x + 10, pos.y + TILE_HEIGHT / 2 - 12);
+                        ctx.stroke();
+                    }
 
                     if (tile) {
                         const h = 24 + ((tile.level || 1) - 1) * 6;
@@ -1330,11 +1385,20 @@
                         ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
                         ctx.fillStyle = topColor;
                         ctx.fill(); ctx.stroke();
+
+                        if (tile.active && !tile.damaged) {
+                            const pulse = Math.sin(state.animTimer * 5) * 0.5 + 0.5;
+                            ctx.fillStyle = `rgba(52, 211, 153, ${0.4 + pulse * 0.6})`;
+                            ctx.fillRect(pos.x - 4, pos.y + TILE_HEIGHT / 2 - h + 6, 3, 3);
+                            ctx.fillStyle = `rgba(96, 165, 250, ${0.4 + pulse * 0.6})`;
+                            ctx.fillRect(pos.x + 2, pos.y + TILE_HEIGHT / 2 - h + 6, 3, 3);
+                        }
                     }
                 }
             }
         }
 
+        // --- SUB-GRID AUTO-CONNECT & DUAL-TRACK PIPELINES ---
         function drawUtilityLayer() {
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
@@ -1344,31 +1408,94 @@
                     const util = hall.utilityGrid[x][y];
                     const pos = gridToScreen(x, y);
 
-                    if (util.power) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = util.damaged ? '#ef4444' : '#f59e0b';
-                        ctx.lineWidth = 4;
-                        ctx.moveTo(pos.x - 10, pos.y + TILE_HEIGHT / 2);
-                        ctx.lineTo(pos.x + 10, pos.y + TILE_HEIGHT / 2);
-                        ctx.stroke();
+                    // Dual parallel offsets so cooling & power never collide
+                    const pOffX = 6, pOffY = -3;
+                    const cOffX = -6, cOffY = 3;
+
+                    // 1. Render Auto-Connected Power Lines
+                    if (util.power || util.nodeType === 'power_plant') {
+                        const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'power');
+                        drawConnectedPipe(pos.x + pOffX, pos.y + TILE_HEIGHT / 2 + pOffY, neighbors, util.damaged ? '#ef4444' : '#f59e0b', util.damaged ? '#991b1b' : '#b45309');
+                        
+                        // Animated Flow Particle
+                        if (!util.damaged) {
+                            const flow = (state.animTimer * 20) % 20;
+                            ctx.fillStyle = '#fde68a';
+                            ctx.beginPath();
+                            ctx.arc(pos.x + pOffX + (flow - 10) * 0.4, pos.y + TILE_HEIGHT / 2 + pOffY + (flow - 10) * 0.2, 2.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                     }
 
-                    if (util.cooling) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = util.damaged ? '#ef4444' : '#06b6d4';
-                        ctx.lineWidth = 4;
-                        ctx.moveTo(pos.x, pos.y + TILE_HEIGHT / 2 - 6);
-                        ctx.lineTo(pos.x, pos.y + TILE_HEIGHT / 2 + 6);
-                        ctx.stroke();
+                    // 2. Render Auto-Connected Cooling Pipes
+                    if (util.cooling || util.nodeType === 'chiller') {
+                        const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'cooling');
+                        drawConnectedPipe(pos.x + cOffX, pos.y + TILE_HEIGHT / 2 + cOffY, neighbors, util.damaged ? '#ef4444' : '#06b6d4', util.damaged ? '#991b1b' : '#0891b2');
+
+                        // Animated Coolant Pulse
+                        if (!util.damaged) {
+                            const flow = (state.animTimer * 15) % 20;
+                            ctx.fillStyle = '#a5f3fc';
+                            ctx.beginPath();
+                            ctx.arc(pos.x + cOffX + (flow - 10) * 0.4, pos.y + TILE_HEIGHT / 2 + cOffY + (flow - 10) * 0.2, 2.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                     }
 
+                    // 3. Central Utility Stations
                     if (util.nodeType) {
                         ctx.beginPath();
                         ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 10, 0, Math.PI * 2);
                         ctx.fillStyle = util.damaged ? '#ef4444' : (util.nodeType === 'power_plant' ? '#f59e0b' : '#3b82f6');
-                        ctx.fill(); ctx.stroke();
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
                     }
                 }
+            }
+        }
+
+        function getConnectedNeighbors(grid, x, y, type) {
+            const check = (nx, ny) => {
+                if (nx < 0 || nx >= state.hallGridSize || ny < 0 || ny >= state.hallGridSize) return false;
+                const u = grid[nx][ny];
+                if (type === 'power') return u.power || u.nodeType === 'power_plant';
+                if (type === 'cooling') return u.cooling || u.nodeType === 'chiller';
+                return false;
+            };
+
+            return {
+                N: check(x, y - 1),
+                S: check(x, y + 1),
+                E: check(x + 1, y),
+                W: check(x - 1, y)
+            };
+        }
+
+        function drawConnectedPipe(cx, cy, n, strokeColor, glowColor) {
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+
+            const lenX = TILE_WIDTH / 4;
+            const lenY = TILE_HEIGHT / 4;
+
+            // Center hub
+            ctx.beginPath();
+            ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = strokeColor;
+            ctx.fill();
+
+            // Adjacency connections
+            if (n.N) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + lenX, cy - lenY); ctx.stroke(); }
+            if (n.S) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - lenX, cy + lenY); ctx.stroke(); }
+            if (n.E) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + lenX, cy + lenY); ctx.stroke(); }
+            if (n.W) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - lenX, cy - lenY); ctx.stroke(); }
+
+            // Default stub if standalone
+            if (!n.N && !n.S && !n.E && !n.W) {
+                ctx.beginPath(); ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy); ctx.stroke();
             }
         }
     </script>
