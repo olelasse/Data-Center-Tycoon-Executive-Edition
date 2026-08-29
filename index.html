@@ -263,7 +263,6 @@
             background-color: var(--accent-green);
         }
 
-        /* Modal / New Game Screen Styles */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -395,8 +394,7 @@
 
             <div>
                 <div class="section-title">Construction Panel</div>
-                <div class="build-grid" id="build-menu">
-                    </div>
+                <div class="build-grid" id="build-menu"></div>
             </div>
         </div>
 
@@ -415,7 +413,6 @@
     </div>
 
     <script>
-        // --- CONSTANTS & BALANCING CONFIGS ---
         const TILE_WIDTH = 64;
         const TILE_HEIGHT = 32;
 
@@ -433,49 +430,34 @@
 
         const ITEMS = {
             demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component.' },
-            
-            // Regional Map Items
             hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector to expand operational space.' },
-
-            // Surface Items (Hall Level)
             server: { id: 'server', name: 'Standard Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, category: 'surface', desc: 'Standard compute rack.' },
             storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, category: 'surface', desc: 'Low heat, stable capacity revenue.' },
             ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 3200, powerReq: 40, coolingReq: 35, rev: 1400, category: 'surface', desc: 'High density compute module.' },
             ups: { id: 'ups', name: 'UPS Power Unit', cost: 1200, powerReq: -25, coolingReq: 0, rev: 0, category: 'surface', desc: 'Backup utility power module.' },
-            
-            // Sub-Floor Utility Items
             power_plant: { id: 'power_plant', name: 'Substation Hub', cost: 1500, powerGen: 120, category: 'utility', layer: 'power', desc: 'High-voltage intake node.' },
             power_cable: { id: 'power_cable', name: 'Power Line Conduit', cost: 20, category: 'utility', layer: 'power', desc: 'Routes electrical power under grid.' },
             chiller: { id: 'chiller', name: 'HVAC Chiller Unit', cost: 1800, coolingGen: 100, category: 'utility', layer: 'cooling', desc: 'Refrigerant cooling generator.' },
             cool_pipe: { id: 'cool_pipe', name: 'Cooling Pipe Line', cost: 25, category: 'utility', layer: 'cooling', desc: 'Routes liquid cooling loops.' }
         };
 
-        // --- STATE MANAGEMENT ---
         let state = {
             cash: 0,
             difficulty: 'normal',
             region: 'nordic',
-            viewMode: 'region', // 'region', 'surface', 'utility'
+            viewMode: 'region',
             selectedItem: null,
-            activeHallIndex: 0,
-
-            // Map System
+            activeHallIndex: '2_2',
             regionGridSize: 6,
-            regionGrid: [], // Matrix of constructed server hall sectors
-
-            // Active Sector Grids (10x10)
+            regionGrid: [],
             hallGridSize: 10,
-            hallsData: {}, // Map key `${rx}_${ry}` => { surfaceGrid: [][], utilityGrid: [][] }
-
-            // Dynamic Calculations
+            hallsData: {},
             powerProduced: 0,
             powerConsumed: 0,
             coolingProduced: 0,
             coolingConsumed: 0,
             netIncome: 0,
             uptime: 100,
-
-            // Isometric Camera Engine
             panX: 0,
             panY: 0,
             isDragging: false,
@@ -484,7 +466,6 @@
 
         let canvas, ctx;
 
-        // --- INITIALIZATION & SETUP ---
         window.onload = () => {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
@@ -493,16 +474,17 @@
             resizeCanvas();
 
             setupControls();
+            resetCamera();
 
-            // Center Viewport Camera
-            state.panX = canvas.width / 2;
-            state.panY = canvas.height / 4;
-
-            // Start Animation Loop & Timers
             requestAnimationFrame(gameLoop);
             setInterval(simulationTick, 2000);
             setInterval(triggerRandomEvents, 15000);
         };
+
+        function resetCamera() {
+            state.panX = canvas.width / 2;
+            state.panY = state.viewMode === 'region' ? canvas.height / 3 : canvas.height / 4;
+        }
 
         function startNewGame() {
             state.difficulty = document.getElementById('diff-select').value;
@@ -511,18 +493,17 @@
             const diffConfig = DIFFICULTY_SETTINGS[state.difficulty];
             state.cash = diffConfig.startCash;
 
-            // Initialize 6x6 Region Map
             state.regionGrid = Array(state.regionGridSize).fill(null).map(() => Array(state.regionGridSize).fill(false));
             state.hallsData = {};
 
-            // Place starting Server Hall at center (2,2)
             state.regionGrid[2][2] = true;
             initializeHallData(2, 2);
+            state.activeHallIndex = '2_2';
 
             document.getElementById('new-game-modal').style.display = 'none';
             setViewMode('region');
             recalculateInfrastructure();
-            logEvent(`Data Center site launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked.`, "success");
+            logEvent(`Data Center site launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
         }
 
         function initializeHallData(rx, ry) {
@@ -540,7 +521,6 @@
             canvas.height = canvas.parentElement.clientHeight;
         }
 
-        // --- UI RENDER & CONTROLS ---
         function buildMenuUI() {
             const menu = document.getElementById('build-menu');
             menu.innerHTML = '';
@@ -548,7 +528,6 @@
             Object.keys(ITEMS).forEach(key => {
                 const item = ITEMS[key];
                 
-                // Filter items according to active view mode
                 if (state.viewMode === 'region' && item.category !== 'region' && item.id !== 'demolish') return;
                 if (state.viewMode === 'surface' && item.category !== 'surface' && item.id !== 'demolish') return;
                 if (state.viewMode === 'utility' && item.category !== 'utility' && item.id !== 'demolish') return;
@@ -584,6 +563,7 @@
         function setViewMode(mode) {
             state.viewMode = mode;
             state.selectedItem = null;
+            resetCamera();
 
             document.getElementById('btn-view-region').className = `btn ${mode === 'region' ? 'active' : ''}`;
             document.getElementById('btn-view-surface').className = `btn ${mode === 'surface' ? 'active' : ''}`;
@@ -615,7 +595,6 @@
             if (log.children.length > 8) log.removeChild(log.lastChild);
         }
 
-        // --- ISOMETRIC PROJECTION & CONTROLS ---
         function gridToScreen(gx, gy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
             const screenX = (gx - gy) * (scaleX / 2) + state.panX;
             const screenY = (gx + gy) * (scaleY / 2) + state.panY;
@@ -634,7 +613,7 @@
 
         function setupControls() {
             canvas.addEventListener('mousedown', (e) => {
-                if (e.button === 0) { // Left mouse click
+                if (e.button === 0) {
                     const rect = canvas.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
                     const mouseY = e.clientY - rect.top;
@@ -643,7 +622,6 @@
                     const scaleY = state.viewMode === 'region' ? 60 : TILE_HEIGHT;
 
                     const tile = screenToGrid(mouseX, mouseY, scaleX, scaleY);
-                    
                     const maxBound = state.viewMode === 'region' ? state.regionGridSize : state.hallGridSize;
 
                     if (tile.x >= 0 && tile.x < maxBound && tile.y >= 0 && tile.y < maxBound) {
@@ -666,7 +644,6 @@
         }
 
         function handleTileClick(x, y) {
-            // Regional Navigation / Placement Mode
             if (state.viewMode === 'region') {
                 if (state.selectedItem === 'hall_node') {
                     if (!state.regionGrid[x][y]) {
@@ -680,18 +657,18 @@
                         logEvent(`Constructed Server Hall Sector (${x}, ${y}).`, "success");
                     }
                 } else {
-                    // Click sector to enter hall
                     if (state.regionGrid[x][y]) {
                         state.activeHallIndex = `${x}_${y}`;
                         setViewMode('surface');
                         logEvent(`Viewing Server Hall Sector (${x}, ${y}).`, "info");
+                    } else {
+                        logEvent(`Tile (${x}, ${y}) is empty land. Select 'Construct Server Hall' to build here.`, "info");
                     }
                 }
                 recalculateInfrastructure();
                 return;
             }
 
-            // Hall Level Placement Mode
             if (!state.selectedItem) return;
 
             const item = ITEMS[state.selectedItem];
@@ -728,10 +705,9 @@
             recalculateInfrastructure();
         }
 
-        // --- SIMULATION & BALANCED ECONOMIC GRAPH ---
         function recalculateInfrastructure() {
-            const diff = DIFFICULTY_SETTINGS[state.difficulty];
-            const reg = REGION_SETTINGS[state.region];
+            const diff = DIFFICULTY_SETTINGS[state.difficulty] || DIFFICULTY_SETTINGS.normal;
+            const reg = REGION_SETTINGS[state.region] || REGION_SETTINGS.nordic;
 
             let powerCap = 0;
             let coolingCap = 0;
@@ -741,12 +717,10 @@
             let totalRacks = 0;
             let operationalRacks = 0;
 
-            // Iterate through every unlocked sector
             Object.keys(state.hallsData).forEach(key => {
                 const hall = state.hallsData[key];
                 const size = state.hallGridSize;
 
-                // Pathfinding BFS for power & cooling graph
                 const poweredTiles = Array(size).fill(null).map(() => Array(size).fill(false));
                 const cooledTiles = Array(size).fill(null).map(() => Array(size).fill(false));
 
@@ -766,11 +740,9 @@
                     }
                 }
 
-                // Run Utility Connection Checks
                 runBFS(hall.utilityGrid, pSources, poweredTiles, 'power');
                 runBFS(hall.utilityGrid, cSources, cooledTiles, 'cooling');
 
-                // Evaluate operational status of surface racks
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
                         const tile = hall.surfaceGrid[x][y];
@@ -796,7 +768,6 @@
                 }
             });
 
-            // Adjust environmental load metrics
             cDraw = Math.round(cDraw * reg.coolingMult);
             pDraw = Math.round(pDraw * reg.powerMult);
 
@@ -811,15 +782,12 @@
 
             state.uptime = Math.max(0, Math.round((totalRacks > 0 ? (operationalRacks / totalRacks) : 1.0) * efficiency * 100));
 
-            // Balanced Maintenance Fee Structure
-            // Scaled maintenance costs based on difficulty multiplier
             const baseSectorFee = Object.keys(state.hallsData).length * 150;
             const utilityMaintenance = ((pDraw * 0.4) + (cDraw * 0.3)) * diff.maintMult;
             const totalExpense = Math.round(baseSectorFee + utilityMaintenance);
 
             state.netIncome = Math.round((grossRev * (state.uptime / 100)) - totalExpense);
 
-            // UI Refresh
             document.getElementById('val-cash').innerText = `$${state.cash.toLocaleString()}`;
             document.getElementById('val-net').innerText = `$${state.netIncome}/mo`;
             document.getElementById('val-net').style.color = state.netIncome >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
@@ -856,7 +824,6 @@
             }
         }
 
-        // --- TICK ENGINE & SAVE/LOAD SYSTEMS ---
         function simulationTick() {
             state.cash += state.netIncome;
             recalculateInfrastructure();
@@ -901,7 +868,6 @@
             }
         }
 
-        // --- GRAPHICS & CANVAS RENDER ENGINE ---
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -926,7 +892,7 @@
             for (let x = 0; x < size; x++) {
                 for (let y = 0; y < size; y++) {
                     const pos = gridToScreen(x, y, scaleX, scaleY);
-                    const unlocked = state.regionGrid[x][y];
+                    const unlocked = state.regionGrid[x] && state.regionGrid[x][y];
 
                     ctx.beginPath();
                     ctx.moveTo(pos.x, pos.y);
@@ -935,17 +901,23 @@
                     ctx.lineTo(pos.x - scaleX / 2, pos.y + scaleY / 2);
                     ctx.closePath();
 
-                    ctx.fillStyle = unlocked ? '#1e293b' : '#0f172a';
+                    ctx.fillStyle = unlocked ? '#1e293b' : '#0d131c';
                     ctx.fill();
-                    ctx.strokeStyle = unlocked ? '#3b82f6' : '#334155';
+                    ctx.strokeStyle = unlocked ? '#3b82f6' : '#243144';
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
+                    ctx.fillStyle = unlocked ? '#60a5fa' : '#475569';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    
                     if (unlocked) {
-                        ctx.fillStyle = '#60a5fa';
-                        ctx.font = 'bold 12px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(`Server Hall (${x},${y})`, pos.x, pos.y + scaleY / 2 + 4);
+                        ctx.fillText(`Server Hall (${x},${y})`, pos.x, pos.y + scaleY / 2 - 2);
+                        ctx.fillStyle = '#10b981';
+                        ctx.font = '10px sans-serif';
+                        ctx.fillText('Active Sector', pos.x, pos.y + scaleY / 2 + 12);
+                    } else {
+                        ctx.fillText(`Sector (${x},${y})`, pos.x, pos.y + scaleY / 2 + 3);
                     }
                 }
             }
@@ -993,7 +965,6 @@
                             topColor = '#4b5563'; sideColor = '#1f2937';
                         }
 
-                        // Left Side
                         ctx.beginPath();
                         ctx.moveTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
                         ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
@@ -1002,7 +973,6 @@
                         ctx.fillStyle = sideColor;
                         ctx.fill(); ctx.stroke();
 
-                        // Right Side
                         ctx.beginPath();
                         ctx.moveTo(pos.x, pos.y + TILE_HEIGHT);
                         ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
@@ -1011,7 +981,6 @@
                         ctx.fillStyle = '#0f172a';
                         ctx.fill(); ctx.stroke();
 
-                        // Top Surface
                         ctx.beginPath();
                         ctx.moveTo(pos.x, pos.y - h);
                         ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2 - h);
