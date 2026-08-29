@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Center Tycoon</title>
+    <title>Data Center Tycoon: Executive Edition</title>
     <style>
         :root {
             --bg-dark: #0a0d12;
@@ -46,7 +46,7 @@
         }
 
         .brand {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: bold;
             color: var(--accent-blue);
             display: flex;
@@ -56,7 +56,8 @@
 
         .stats-bar {
             display: flex;
-            gap: 15px;
+            gap: 12px;
+            align-items: center;
         }
 
         .stat-item {
@@ -72,8 +73,48 @@
         }
 
         .stat-value {
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: bold;
+        }
+
+        /* Time Controls Styling */
+        .time-controls {
+            display: flex;
+            gap: 4px;
+            background: #0d131c;
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+            margin-right: 8px;
+        }
+
+        .time-btn {
+            background: #18202c;
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-btn:hover {
+            background: #253346;
+            border-color: var(--accent-blue);
+        }
+
+        .time-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .time-btn.paused {
+            background: var(--accent-red);
+            color: white;
+            border-color: var(--accent-red);
         }
 
         #main-container {
@@ -84,7 +125,7 @@
         }
 
         #sidebar {
-            width: 320px;
+            width: 340px;
             background-color: var(--panel-bg);
             border-right: 2px solid var(--panel-border);
             display: flex;
@@ -103,6 +144,32 @@
             margin-bottom: 6px;
             border-bottom: 1px solid var(--panel-border);
             padding-bottom: 4px;
+        }
+
+        .tab-group {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: #1f293d;
+            border: 1px solid var(--panel-border);
+            color: var(--text-muted);
+            padding: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
         }
 
         .view-controls {
@@ -145,8 +212,8 @@
         }
 
         .build-grid {
-            display: grid;
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 6px;
         }
 
@@ -167,6 +234,12 @@
         .build-card.selected {
             border-color: var(--accent-green);
             background: #142824;
+        }
+
+        .build-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #374151;
         }
 
         .build-card-title {
@@ -262,7 +335,7 @@
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(5, 7, 10, 0.85);
+            background: rgba(5, 7, 10, 0.88);
             backdrop-filter: blur(8px);
             z-index: 100;
             display: flex;
@@ -274,11 +347,11 @@
             background: var(--panel-bg);
             border: 2px solid var(--panel-border);
             border-radius: 8px;
-            width: 480px;
+            width: 520px;
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
 
@@ -323,30 +396,69 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             line-height: 1.4;
         }
+
+        .sla-card, .tech-card {
+            background: #18202c;
+            border: 1px solid var(--panel-border);
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+        .badge-green { background: #065f46; color: #a7f3d0; }
+        .badge-amber { background: #78350f; color: #fde68a; }
+        .badge-purple { background: #581c87; color: #e9d5ff; }
     </style>
 </head>
 <body>
 
     <div id="new-game-modal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-title">Data Center Tycoon</div>
+            <div class="modal-title">Data Center Tycoon: Executive Suite</div>
+            
             <div class="form-group">
-                <label>Select Difficulty Multiplier</label>
+                <label>Game Mode & Scenario</label>
+                <select id="mode-select" class="select-input" onchange="updateScenarioDesc()">
+                    <option value="sandbox">Endless Sandbox Mode</option>
+                    <option value="scenario_crisis" selected>Challenge: Crisis Management (Fix Debt & Salvage)</option>
+                    <option value="scenario_arctic">Challenge: Arctic Green Tech (100% Clean Energy)</option>
+                </select>
+                <div id="scenario-desc" style="font-size:0.75rem; color:var(--accent-amber); margin-top:2px;">
+                    CRISIS: Start with -$15,000 debt. Use Recycle Tool on broken hardware to salvage cash!
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Difficulty Tier</label>
                 <select id="diff-select" class="select-input">
-                    <option value="easy">Easy (High Start Capital, Low Base Costs)</option>
-                    <option value="normal" selected>Normal (Standard Balance)</option>
-                    <option value="hard">Hard (Strict Budget & High Maintenance)</option>
+                    <option value="easy">Easy (High Funds, Disabled Thermal/Blackout Physics)</option>
+                    <option value="normal" selected>Normal (Standard Balance & SLA Penalties)</option>
+                    <option value="hard">Hard (Hot/Cold Aisle Physics & Grid Blackouts Enabled)</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label>Select Starting Region / Environment</label>
+                <label>Starting Region / Environment</label>
                 <select id="region-select" class="select-input">
                     <option value="nordic">Nordic Valley (Cold - Cheap Water Cooling)</option>
                     <option value="desert">Desert Tech Park (Hot - High Cooling Draw)</option>
                     <option value="metro">Metropolitan Hub (High Power Costs, High Client Revenue)</option>
                 </select>
             </div>
-            <button class="btn" style="background: var(--accent-blue); color: white; padding: 12px;" onclick="startNewGame()">Launch Data Center</button>
+
+            <button class="btn" style="background: var(--accent-blue); color: white; padding: 12px; margin-top: 6px;" onclick="startNewGame()">Launch Ops Center</button>
         </div>
     </div>
 
@@ -356,6 +468,17 @@
             DATA CENTER TYCOON
         </div>
         <div class="stats-bar">
+            <div class="time-controls">
+                <button class="time-btn" id="btn-pause" onclick="setSpeed(0)">⏸ PAUSE</button>
+                <button class="time-btn active" id="btn-1x" onclick="setSpeed(1)">1x</button>
+                <button class="time-btn" id="btn-2x" onclick="setSpeed(2)">2x</button>
+                <button class="time-btn" id="btn-3x" onclick="setSpeed(3)">3x</button>
+            </div>
+
+            <div class="stat-item">
+                <span class="stat-label">Date</span>
+                <span class="stat-value" id="val-date" style="color: var(--accent-blue)">Y1 M1 D01</span>
+            </div>
             <div class="stat-item">
                 <span class="stat-label">Capital</span>
                 <span class="stat-value" id="val-cash" style="color: var(--accent-green)">$0</span>
@@ -365,12 +488,20 @@
                 <span class="stat-value" id="val-net">$0/mo</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Power Supply</span>
+                <span class="stat-label">Power</span>
                 <span class="stat-value" id="val-power">0/0 kW</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Cooling Load</span>
+                <span class="stat-label">Cooling</span>
                 <span class="stat-value" id="val-cooling">0/0 BTU</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Research (RP)</span>
+                <span class="stat-value" id="val-rp" style="color: var(--accent-purple)">0 RP</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Spot Price</span>
+                <span class="stat-value" id="val-spot" style="color: var(--accent-amber)">$0.12/kWh</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">Uptime</span>
@@ -381,26 +512,52 @@
 
     <div id="main-container">
         <div id="sidebar">
-            <div>
+            <div class="tab-group">
+                <div class="tab-btn active" id="tab-btn-build" onclick="switchSidebarTab('build')">Build</div>
+                <div class="tab-btn" id="tab-btn-sla" onclick="switchSidebarTab('sla')">SLA Contracts</div>
+                <div class="tab-btn" id="tab-btn-tech" onclick="switchSidebarTab('tech')">R&D Tree</div>
+                <div class="tab-btn" id="tab-btn-corp" onclick="switchSidebarTab('corp')">Prestige</div>
+            </div>
+
+            <div id="tab-view-controls">
                 <div class="section-title">View Mode</div>
-                <div class="view-controls">
+                <div class="view-controls" style="margin-bottom: 8px;">
                     <button class="btn active" id="btn-view-region" onclick="setViewMode('region')">Region</button>
                     <button class="btn" id="btn-view-surface" onclick="setViewMode('surface')">Hall Floor</button>
                     <button class="btn" id="btn-view-utility" onclick="setViewMode('utility')">Sub-Grid</button>
                 </div>
-            </div>
 
-            <div>
                 <div class="section-title">System Controls</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
                     <button class="btn btn-action" onclick="saveGame()">Save Game</button>
                     <button class="btn btn-action" onclick="loadGame()">Load Game</button>
                 </div>
             </div>
 
-            <div>
-                <div class="section-title">Construction & Tools Panel</div>
+            <div id="tab-content-build">
+                <div class="section-title">Construction Panel</div>
                 <div class="build-grid" id="build-menu"></div>
+            </div>
+
+            <div id="tab-content-sla" style="display:none;">
+                <div class="section-title">Active Contract Board</div>
+                <div id="sla-container"></div>
+            </div>
+
+            <div id="tab-content-tech" style="display:none;">
+                <div class="section-title">Research & Development</div>
+                <div id="tech-container"></div>
+            </div>
+
+            <div id="tab-content-corp" style="display:none;">
+                <div class="section-title">Corporate Valuation</div>
+                <div class="sla-card">
+                    <div>Valuation Target: <strong>$100,000</strong></div>
+                    <div style="color:var(--text-muted); font-size:0.7rem;">Sell company to unlock permanent Executive Board Perks for future runs.</div>
+                    <button class="btn" style="background:var(--accent-purple); color:white; margin-top:6px;" onclick="triggerPrestige()">Corporate Buyout (Prestige)</button>
+                </div>
+                <div class="section-title" style="margin-top:10px;">Executive Perks Unlocked</div>
+                <div id="perks-list" style="font-size:0.75rem; color:var(--text-muted);">No perks unlocked yet. Reach $100k valuation to buy out.</div>
             </div>
         </div>
 
@@ -415,7 +572,7 @@
             <div id="tile-tooltip"></div>
 
             <div id="event-log">
-                <div class="log-entry">Facility initialized. Build conduits & connect infrastructure.</div>
+                <div class="log-entry">Facility initialized. Select Hall (2,2) to start.</div>
             </div>
         </div>
     </div>
@@ -436,27 +593,41 @@
             metro: { name: "Metropolitan Hub", coolingMult: 1.0, powerMult: 1.3 }
         };
 
+        const TECH_TREE = {
+            gpu_clusters: { id: 'gpu_clusters', name: 'GPU AI Superclusters', costRP: 150, unlocked: false, desc: 'Unlocks high-yield AI workload racks.' },
+            liquid_cooling: { id: 'liquid_cooling', name: 'Liquid Immersion Cooling', costRP: 250, unlocked: false, desc: 'Unlocks ultra-efficient immersion chillers.' },
+            quantum_nodes: { id: 'quantum_nodes', name: 'Quantum Compute Units', costRP: 500, unlocked: false, desc: 'Unlocks Tier 4 Quantum Processors.' },
+            diesel_generators: { id: 'diesel_generators', name: 'Backup Diesel Generators', costRP: 100, unlocked: false, desc: 'Protects facility during grid blackouts.' }
+        };
+
         const ITEMS = {
             repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix damaged or broken components.' },
+            recycle: { id: 'recycle', name: 'Recycle Hardware', cost: 0, category: 'tool', desc: 'Scrap hardware/debris for cash refunds!' },
             upgrade: { id: 'upgrade', name: 'Upgrade Node', cost: 500, category: 'tool', desc: 'Upgrade rack or utility capacity by +50%.' },
-            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component (required to rebuild racks).' },
+            demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component.' },
             
             hall_node: { id: 'hall_node', name: 'Construct Server Hall', cost: 15000, category: 'region', desc: 'Builds a new server hall sector.' },
             
-            server: { id: 'server', name: 'Standard Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, category: 'surface', desc: 'Standard compute rack.' },
-            storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, category: 'surface', desc: 'Low heat capacity revenue.' },
-            ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 3200, powerReq: 40, coolingReq: 35, rev: 1400, category: 'surface', desc: 'High density compute module.' },
+            server: { id: 'server', name: 'Standard Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, compute: 100, category: 'surface', desc: 'Standard compute rack.' },
+            storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, compute: 50, category: 'surface', desc: 'Low heat capacity revenue.' },
+            junk_rack: { id: 'junk_rack', name: 'Decommissioned Cluster', cost: 0, powerReq: 0, coolingReq: 0, rev: 0, compute: 0, category: 'surface', desc: 'Broken cluster. Recycle to get +$5,000 cash!' },
+            ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 3200, powerReq: 40, coolingReq: 35, rev: 1400, compute: 500, category: 'surface', reqTech: 'gpu_clusters', desc: 'High density compute module.' },
+            quantum: { id: 'quantum', name: 'Quantum Node', cost: 12000, powerReq: 120, coolingReq: 110, rev: 6500, compute: 2200, category: 'surface', reqTech: 'quantum_nodes', desc: 'Pinnacle compute tech.' },
+            rd_lab: { id: 'rd_lab', name: 'R&D Lab Module', cost: 2500, powerReq: 20, coolingReq: 10, rpGen: 5, category: 'surface', desc: 'Generates monthly Research Points.' },
+            generator: { id: 'generator', name: 'Diesel Generator', cost: 4000, powerGen: 150, category: 'surface', reqTech: 'diesel_generators', desc: 'Backup power during blackouts.' },
             ups: { id: 'ups', name: 'UPS Power Unit', cost: 1200, powerReq: -25, coolingReq: 0, rev: 0, category: 'surface', desc: 'Backup utility power module.' },
             
             power_plant: { id: 'power_plant', name: 'Substation Hub', cost: 1500, powerGen: 120, category: 'utility', layer: 'power', desc: 'High-voltage intake node.' },
             power_cable: { id: 'power_cable', name: 'Power Line Conduit', cost: 20, category: 'utility', layer: 'power', desc: 'Routes electrical power under grid.' },
             chiller: { id: 'chiller', name: 'HVAC Chiller Unit', cost: 1800, coolingGen: 100, category: 'utility', layer: 'cooling', desc: 'Refrigerant cooling generator.' },
+            liquid_chiller: { id: 'liquid_chiller', name: 'Liquid Immersion Loop', cost: 5000, coolingGen: 350, category: 'utility', layer: 'cooling', reqTech: 'liquid_cooling', desc: 'Ultra-efficient liquid cooling.' },
             cool_pipe: { id: 'cool_pipe', name: 'Cooling Pipe Line', cost: 25, category: 'utility', layer: 'cooling', desc: 'Routes liquid cooling loops.' }
         };
 
         let state = {
             cash: 0,
             difficulty: 'normal',
+            mode: 'sandbox',
             region: 'nordic',
             viewMode: 'region',
             selectedItem: null,
@@ -465,6 +636,20 @@
             regionGrid: [],
             hallGridSize: 10,
             hallsData: {},
+            rp: 0,
+            spotPrice: 0.12,
+            isBlackout: false,
+            blackoutTimer: 0,
+            
+            // TIME SYSTEM (1 Day Default = 1000ms = 1s)
+            day: 1,
+            month: 1,
+            year: 1,
+            gameSpeed: 1, // 0 = Pause, 1 = 1x (1000ms), 2 = 2x (400ms), 3 = 3x (100ms)
+
+            activeContracts: [],
+            availableContracts: [],
+            executivePerks: { startBonus: 0 },
             powerProduced: 0,
             powerConsumed: 0,
             coolingProduced: 0,
@@ -482,6 +667,8 @@
         };
 
         let canvas, ctx;
+        let dayTimer = null;
+        let eventTimer = null;
 
         window.onload = () => {
             canvas = document.getElementById('gameCanvas');
@@ -494,21 +681,70 @@
             resetCamera();
 
             requestAnimationFrame(gameLoop);
-            setInterval(simulationTick, 2000);
-            setInterval(triggerRandomEvents, 12000);
+            
+            // Start Default Time Cycle (1x speed = 1000ms per day)
+            restartTimers();
         };
+
+        function setSpeed(speedLevel) {
+            state.gameSpeed = speedLevel;
+            
+            ['btn-pause', 'btn-1x', 'btn-2x', 'btn-3x'].forEach(id => {
+                document.getElementById(id).classList.remove('active', 'paused');
+            });
+
+            if (speedLevel === 0) {
+                document.getElementById('btn-pause').classList.add('paused');
+                logEvent("Simulation PAUSED. Actions are locked until resumed.", "alert");
+            } else if (speedLevel === 1) {
+                document.getElementById('btn-1x').classList.add('active');
+            } else if (speedLevel === 2) {
+                document.getElementById('btn-2x').classList.add('active');
+            } else if (speedLevel === 3) {
+                document.getElementById('btn-3x').classList.add('active');
+            }
+
+            restartTimers();
+        }
+
+        function restartTimers() {
+            if (dayTimer) clearInterval(dayTimer);
+            if (eventTimer) clearInterval(eventTimer);
+
+            if (state.gameSpeed === 0) return; // Completely paused
+
+            let dayInterval = 1000; // 1x Speed = 1 day / second
+            if (state.gameSpeed === 2) dayInterval = 400;  // 2x Speed = 0.4s / day
+            if (state.gameSpeed === 3) dayInterval = 100;  // 3x Speed = 0.1s / day
+
+            dayTimer = setInterval(dailyTick, dayInterval);
+            eventTimer = setInterval(triggerRandomEvents, dayInterval * 12);
+        }
 
         function resetCamera() {
             state.panX = canvas.width / 2;
             state.panY = state.viewMode === 'region' ? canvas.height / 3 : canvas.height / 4;
         }
 
+        function updateScenarioDesc() {
+            const m = document.getElementById('mode-select').value;
+            const d = document.getElementById('scenario-desc');
+            if (m === 'scenario_crisis') d.innerText = "CRISIS: Start with -$15,000 debt. Use Recycle Tool on broken hardware to salvage cash!";
+            else if (m === 'scenario_arctic') d.innerText = "ARCTIC GREEN: 100% renewable mandate! Power costs +50%, but cooling costs -50%.";
+            else d.innerText = "Standard tycoon setup. Build, expand, research, and monetize at your own pace.";
+        }
+
         function startNewGame() {
             state.difficulty = document.getElementById('diff-select').value;
+            state.mode = document.getElementById('mode-select').value;
             state.region = document.getElementById('region-select').value;
             
             const diffConfig = DIFFICULTY_SETTINGS[state.difficulty];
-            state.cash = diffConfig.startCash;
+            state.cash = state.mode === 'scenario_crisis' ? -15000 : (diffConfig.startCash + state.executivePerks.startBonus);
+
+            state.day = 1;
+            state.month = 1;
+            state.year = 1;
 
             state.regionGrid = Array(state.regionGridSize).fill(null).map(() => Array(state.regionGridSize).fill(false));
             state.hallsData = {};
@@ -517,10 +753,32 @@
             initializeHallData(2, 2);
             state.activeHallIndex = '2_2';
 
+            if (state.mode === 'scenario_crisis') {
+                const h = state.hallsData['2_2'];
+                
+                h.surfaceGrid[2][2] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+                h.surfaceGrid[2][3] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+                h.surfaceGrid[3][2] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+                h.surfaceGrid[3][3] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+
+                for (let i = 0; i < 6; i++) {
+                    h.utilityGrid[i][2].power = true;
+                    h.utilityGrid[i][2].cooling = true;
+                }
+            }
+
+            generateContractBoard();
             document.getElementById('new-game-modal').style.display = 'none';
             setViewMode('region');
             recalculateInfrastructure();
-            logEvent(`Data Center launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
+            updateDateDisplay();
+            setSpeed(1);
+            
+            if (state.mode === 'scenario_crisis') {
+                logEvent("CRISIS: Facilities stranded in debt! Enter Sector (2,2) & use RECYCLE TOOL on Decommissioned Clusters to claim cash!", "alert");
+            } else {
+                logEvent(`Ops Center launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
+            }
         }
 
         function initializeHallData(rx, ry) {
@@ -538,6 +796,15 @@
             canvas.height = canvas.parentElement.clientHeight;
         }
 
+        function switchSidebarTab(tab) {
+            ['build', 'sla', 'tech', 'corp'].forEach(t => {
+                document.getElementById(`tab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+                document.getElementById(`tab-btn-${t}`).className = `tab-btn ${t === tab ? 'active' : ''}`;
+            });
+            if (tab === 'sla') renderSLABoard();
+            if (tab === 'tech') renderTechTree();
+        }
+
         function buildMenuUI() {
             const menu = document.getElementById('build-menu');
             menu.innerHTML = '';
@@ -545,13 +812,21 @@
             Object.keys(ITEMS).forEach(key => {
                 const item = ITEMS[key];
                 
+                if (key === 'junk_rack') return;
                 if (state.viewMode === 'region' && item.category !== 'region' && item.category !== 'tool') return;
                 if (state.viewMode === 'surface' && item.category !== 'surface' && item.category !== 'tool') return;
                 if (state.viewMode === 'utility' && item.category !== 'utility' && item.category !== 'tool') return;
 
+                const isLocked = item.reqTech && !TECH_TREE[item.reqTech].unlocked;
                 const card = document.createElement('div');
-                card.className = `build-card ${state.selectedItem === key ? 'selected' : ''}`;
-                card.onclick = () => selectTool(key);
+                card.className = `build-card ${state.selectedItem === key ? 'selected' : ''} ${isLocked ? 'locked' : ''}`;
+                card.onclick = () => {
+                    if (state.gameSpeed === 0) {
+                        logEvent("Unpause simulation to perform operations!", "alert");
+                        return;
+                    }
+                    if (!isLocked) selectTool(key);
+                };
 
                 let statsText = '';
                 if (item.powerReq) statsText += `⚡ ${item.powerReq}kW `;
@@ -567,14 +842,111 @@
                     </div>
                     <div class="build-card-desc">${item.desc}</div>
                     <div class="build-card-stats">${statsText}</div>
+                    ${isLocked ? `<div style="font-size:0.65rem; color:var(--accent-red); margin-top:2px;">🔒 Requires Tech: ${TECH_TREE[item.reqTech].name}</div>` : ''}
                 `;
                 menu.appendChild(card);
             });
         }
 
         function selectTool(key) {
+            if (state.gameSpeed === 0) return;
             state.selectedItem = state.selectedItem === key ? null : key;
             buildMenuUI();
+        }
+
+        function generateContractBoard() {
+            state.availableContracts = [
+                { id: 1, client: "Aether AI Labs", reqCompute: 300, payout: 2200, penalty: 4000, duration: 6, tier: "High Compute" },
+                { id: 2, client: "Global Stream Video", reqCompute: 150, payout: 950, penalty: 1500, duration: 12, tier: "Storage/Bandwidth" },
+                { id: 3, client: "FinTech Exchange", reqCompute: 600, payout: 5800, penalty: 12000, duration: 4, tier: "Low Latency (Tier 3)" }
+            ];
+        }
+
+        function renderSLABoard() {
+            const container = document.getElementById('sla-container');
+            container.innerHTML = '';
+            
+            state.activeContracts.forEach(c => {
+                container.innerHTML += `
+                    <div class="sla-card" style="border-color:var(--accent-green);">
+                        <span class="badge badge-green">Active Contract</span>
+                        <strong>${c.client} (${c.tier})</strong>
+                        <div>Req Compute: <strong>${c.reqCompute} Units</strong></div>
+                        <div>Monthly Payout: <strong style="color:var(--accent-green)">+$${c.payout}/mo</strong></div>
+                        <div>Remaining: ${c.duration} Months</div>
+                    </div>
+                `;
+            });
+
+            state.availableContracts.forEach((c, idx) => {
+                container.innerHTML += `
+                    <div class="sla-card">
+                        <span class="badge badge-amber">Open Bid</span>
+                        <strong>${c.client} (${c.tier})</strong>
+                        <div>Req Compute: ${c.reqCompute} | Duration: ${c.duration}m</div>
+                        <div>Yield: <strong style="color:var(--accent-green)">+$${c.payout}/mo</strong> | Breach Fines: <strong style="color:var(--accent-red)">-$${c.penalty}</strong></div>
+                        <button class="btn" style="margin-top:4px; background:var(--accent-blue);" onclick="acceptContract(${idx})">Sign Contract</button>
+                    </div>
+                `;
+            });
+        }
+
+        function acceptContract(idx) {
+            if (state.gameSpeed === 0) {
+                logEvent("Cannot accept contracts while paused!", "alert");
+                return;
+            }
+            const c = state.availableContracts.splice(idx, 1)[0];
+            state.activeContracts.push(c);
+            renderSLABoard();
+            recalculateInfrastructure();
+            logEvent(`Signed SLA Contract with ${c.client}.`, "success");
+        }
+
+        function renderTechTree() {
+            const container = document.getElementById('tech-container');
+            container.innerHTML = '';
+            Object.keys(TECH_TREE).forEach(key => {
+                const t = TECH_TREE[key];
+                container.innerHTML += `
+                    <div class="tech-card" style="${t.unlocked ? 'border-color:var(--accent-purple);' : ''}">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${t.name}</strong>
+                            <span class="badge ${t.unlocked ? 'badge-purple' : 'badge-amber'}">${t.unlocked ? 'UNLOCKED' : t.costRP + ' RP'}</span>
+                        </div>
+                        <div style="color:var(--text-muted); font-size:0.7rem;">${t.desc}</div>
+                        ${!t.unlocked ? `<button class="btn" style="margin-top:4px;" onclick="unlockTech('${key}')">Research Tech</button>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function unlockTech(key) {
+            if (state.gameSpeed === 0) {
+                logEvent("Cannot research while paused!", "alert");
+                return;
+            }
+            const t = TECH_TREE[key];
+            if (state.rp >= t.costRP) {
+                state.rp -= t.costRP;
+                t.unlocked = true;
+                renderTechTree();
+                buildMenuUI();
+                logEvent(`Researched Technology: ${t.name}!`, "success");
+            } else {
+                logEvent("Insufficient Research Points (RP)!", "alert");
+            }
+        }
+
+        function triggerPrestige() {
+            if (state.cash >= 100000) {
+                state.executivePerks.startBonus += 20000;
+                document.getElementById('perks-list').innerText = `• Permanent Board Perk: +$${state.executivePerks.startBonus.toLocaleString()} Starting Capital on new runs.`;
+                logEvent("Corporate Buyout complete! Executive Perks earned.", "success");
+                document.getElementById('new-game-modal').style.display = 'flex';
+            } else {
+                logEvent("Valuation must hit $100,000 to initiate Buyout!", "alert");
+            }
         }
 
         function setViewMode(mode) {
@@ -610,6 +982,11 @@
             entry.innerText = msg;
             log.prepend(entry);
             if (log.children.length > 8) log.removeChild(log.lastChild);
+        }
+
+        function updateDateDisplay() {
+            const d = String(state.day).padStart(2, '0');
+            document.getElementById('val-date').innerText = `Y${state.year} M${state.month} D${d}`;
         }
 
         function gridToScreen(gx, gy, scaleX = TILE_WIDTH, scaleY = TILE_HEIGHT) {
@@ -651,6 +1028,11 @@
 
         function setupControls() {
             canvas.addEventListener('mousedown', (e) => {
+                if (state.gameSpeed === 0 && e.button === 0 && state.selectedItem) {
+                    logEvent("Simulation PAUSED! Unpause to perform actions.", "alert");
+                    return;
+                }
+
                 if (e.button === 0) {
                     const rect = canvas.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
@@ -697,7 +1079,11 @@
 
             window.addEventListener('mouseup', (e) => {
                 if (state.dragStartTile && state.hoverTile) {
-                    applyMultiPlacement(state.dragStartTile, state.hoverTile);
+                    if (state.gameSpeed === 0 && state.selectedItem) {
+                        logEvent("Simulation PAUSED! Cannot alter layout.", "alert");
+                    } else {
+                        applyMultiPlacement(state.dragStartTile, state.hoverTile);
+                    }
                 }
                 state.dragStartTile = null;
                 state.isPanDragging = false;
@@ -763,6 +1149,23 @@
             if (state.selectedItem) {
                 const item = ITEMS[state.selectedItem];
                 
+                if (item.id === 'recycle') {
+                    const surf = hall.surfaceGrid[x][y];
+                    if (surf) {
+                        const isJunk = surf.type === 'junk_rack';
+                        const refund = isJunk ? 5000 : Math.round(ITEMS[surf.type].cost * 0.5);
+                        tooltip.innerHTML = `
+                            <strong>Recycle Hardware (${x}, ${y})</strong><br>
+                            Type: <strong>${ITEMS[surf.type].name}</strong><br>
+                            Salvage Refund: <strong style="color:var(--accent-green)">+$${refund.toLocaleString()} CASH</strong>
+                        `;
+                        return;
+                    } else {
+                        tooltip.innerHTML = `<strong>Recycle Tool</strong><br><span style="color:var(--text-muted)">Click on Decommissioned Clusters or Racks to scrap for CASH!</span>`;
+                        return;
+                    }
+                }
+
                 if (item.id === 'upgrade') {
                     const surf = hall.surfaceGrid[x][y];
                     if (surf) {
@@ -807,7 +1210,6 @@
                     return;
                 }
 
-                // Check for collision on single placement hover
                 if (item.category === 'surface' && hall.surfaceGrid[x][y]) {
                     tooltip.innerHTML = `
                         <strong style="color:var(--accent-red)">Tile Occupied!</strong><br>
@@ -844,7 +1246,9 @@
                 
                 if (surf) {
                     info += `• Surface: ${ITEMS[surf.type].name} (Lvl ${surf.level || 1})<br>`;
-                    if (surf.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair Tool</span><br>`;
+                    if (surf.type === 'junk_rack') info += `<span style="color:var(--accent-amber)">⚡ RECYCLE THIS FOR +$5,000 CASH!</span><br>`;
+                    if (surf.wear) info += `• Hardware Wear: <span style="color:var(--accent-amber)">${Math.round(surf.wear * 100)}%</span><br>`;
+                    if (surf.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair or Recycle Tool</span><br>`;
                 }
                 
                 if (util.nodeType) info += `• Sub-Node: ${ITEMS[util.nodeType].name}<br>`;
@@ -860,6 +1264,8 @@
         }
 
         function applyMultiPlacement(start, end) {
+            if (state.gameSpeed === 0) return;
+
             if (state.viewMode === 'region') {
                 handleTileClick(start.x, start.y);
                 return;
@@ -883,6 +1289,19 @@
 
             line.forEach(t => {
                 const { x, y } = t;
+
+                if (item.id === 'recycle') {
+                    if (hall.surfaceGrid[x][y]) {
+                        const isJunk = hall.surfaceGrid[x][y].type === 'junk_rack';
+                        const refund = isJunk ? 5000 : Math.round(ITEMS[hall.surfaceGrid[x][y].type].cost * 0.5);
+                        state.cash += refund;
+                        hall.surfaceGrid[x][y] = null;
+                        count++;
+                        logEvent(`Scrapped hardware for +$${refund.toLocaleString()} cash refund!`, "success");
+                    }
+                    return;
+                }
+
                 if (state.cash < item.cost && item.id !== 'demolish') return;
 
                 if (item.id === 'repair') {
@@ -907,7 +1326,7 @@
                     count++;
                 } else if (item.category === 'surface') {
                     if (!hall.surfaceGrid[x][y]) {
-                        hall.surfaceGrid[x][y] = { type: item.id, active: false, level: 1, damaged: false };
+                        hall.surfaceGrid[x][y] = { type: item.id, active: false, level: 1, wear: 0, damaged: false };
                         state.cash -= item.cost;
                         count++;
                     } else {
@@ -927,9 +1346,9 @@
                 logEvent(`Cannot place rack on occupied tiles! Demolish space first.`, "alert");
             }
 
-            if (count > 0) {
-                logEvent(`Constructed ${count}x ${item.name}.`, "success");
-            } else if (line.length > 0 && state.cash < item.cost) {
+            if (count > 0 && item.id !== 'recycle') {
+                logEvent(`Constructed/Processed ${count}x ${item.name}.`, "success");
+            } else if (line.length > 0 && state.cash < item.cost && item.id !== 'recycle') {
                 logEvent(`Insufficient capital to construct requested elements!`, "alert");
             }
             recalculateInfrastructure();
@@ -968,6 +1387,7 @@
             let pDraw = 0;
             let cDraw = 0;
             let grossRev = 0;
+            let totalCompute = 0;
             let totalRacks = 0;
             let operationalRacks = 0;
 
@@ -983,38 +1403,49 @@
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
                         const util = hall.utilityGrid[x][y];
+                        const surf = hall.surfaceGrid[x][y];
                         if (!util.damaged) {
                             if (util.nodeType === 'power_plant') {
                                 pSources.push({ x, y });
                                 powerCap += ITEMS.power_plant.powerGen * (util.level || 1);
                             }
-                            if (util.nodeType === 'chiller') {
+                            if (util.nodeType === 'chiller' || util.nodeType === 'liquid_chiller') {
                                 cSources.push({ x, y });
-                                coolingCap += ITEMS.chiller.coolingGen * (util.level || 1);
+                                coolingCap += ITEMS[util.nodeType].coolingGen * (util.level || 1);
                             }
+                        }
+                        if (surf && surf.type === 'generator' && !surf.damaged && state.isBlackout) {
+                            powerCap += ITEMS.generator.powerGen * (surf.level || 1);
                         }
                     }
                 }
 
-                runBFS(hall.utilityGrid, pSources, poweredTiles, 'power');
+                if (!state.isBlackout) runBFS(hall.utilityGrid, pSources, poweredTiles, 'power');
                 runBFS(hall.utilityGrid, cSources, cooledTiles, 'cooling');
 
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
                         const tile = hall.surfaceGrid[x][y];
-                        if (tile && !tile.damaged) {
+                        if (tile && !tile.damaged && tile.type !== 'junk_rack') {
                             const item = ITEMS[tile.type];
                             const lvl = tile.level || 1;
+                            const wearPenalty = 1 - (tile.wear || 0);
 
-                            if (item.category === 'surface' && item.id !== 'ups') {
+                            let thermalPenalty = 1.0;
+                            if (state.difficulty === 'hard' && y > 0 && hall.surfaceGrid[x][y - 1]) {
+                                thermalPenalty = 0.7;
+                            }
+
+                            if (item.category === 'surface' && item.id !== 'ups' && item.id !== 'generator') {
                                 totalRacks++;
                                 pDraw += (item.powerReq || 0) * lvl;
                                 cDraw += (item.coolingReq || 0) * lvl;
 
-                                if (poweredTiles[x][y] && cooledTiles[x][y]) {
+                                if ((poweredTiles[x][y] || tile.type === 'generator') && cooledTiles[x][y]) {
                                     tile.active = true;
                                     operationalRacks++;
-                                    grossRev += (item.rev || 0) * lvl * diff.revMult;
+                                    totalCompute += Math.round((item.compute || 100) * lvl * wearPenalty * thermalPenalty);
+                                    grossRev += (item.rev || 0) * lvl * diff.revMult * wearPenalty;
                                 } else {
                                     tile.active = false;
                                 }
@@ -1029,6 +1460,15 @@
             cDraw = Math.round(cDraw * reg.coolingMult);
             pDraw = Math.round(pDraw * reg.powerMult);
 
+            let slaPenalties = 0;
+            state.activeContracts.forEach(c => {
+                if (totalCompute >= c.reqCompute) {
+                    grossRev += c.payout;
+                } else {
+                    slaPenalties += c.penalty;
+                }
+            });
+
             state.powerProduced = powerCap;
             state.powerConsumed = pDraw;
             state.coolingProduced = coolingCap;
@@ -1041,8 +1481,8 @@
             state.uptime = Math.max(0, Math.round((totalRacks > 0 ? (operationalRacks / totalRacks) : 1.0) * efficiency * 100));
 
             const baseSectorFee = Object.keys(state.hallsData).length * 150;
-            const utilityMaintenance = ((pDraw * 0.4) + (cDraw * 0.3)) * diff.maintMult;
-            const totalExpense = Math.round(baseSectorFee + utilityMaintenance);
+            const spotEnergyExpense = Math.round((pDraw * state.spotPrice * 10) + (cDraw * 2));
+            const totalExpense = Math.round(baseSectorFee + (spotEnergyExpense * diff.maintMult) + slaPenalties);
 
             state.netIncome = Math.round((grossRev * (state.uptime / 100)) - totalExpense);
 
@@ -1050,12 +1490,14 @@
             document.getElementById('val-net').innerText = `$${state.netIncome}/mo`;
             document.getElementById('val-net').style.color = state.netIncome >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
             
-            document.getElementById('val-power').innerText = `${pDraw}/${powerCap} kW`;
-            document.getElementById('val-power').style.color = pDraw > powerCap ? 'var(--accent-red)' : 'var(--text-main)';
+            document.getElementById('val-power').innerText = `${pDraw}/${powerCap} kW ${state.isBlackout ? '⚡ BLACKOUT' : ''}`;
+            document.getElementById('val-power').style.color = (pDraw > powerCap || state.isBlackout) ? 'var(--accent-red)' : 'var(--text-main)';
             
             document.getElementById('val-cooling').innerText = `${cDraw}/${coolingCap} BTU`;
             document.getElementById('val-cooling').style.color = cDraw > coolingCap ? 'var(--accent-red)' : 'var(--text-main)';
             
+            document.getElementById('val-rp').innerText = `${state.rp} RP`;
+            document.getElementById('val-spot').innerText = `$${state.spotPrice}/kWh`;
             document.getElementById('val-uptime').innerText = `${state.uptime}%`;
         }
 
@@ -1082,12 +1524,77 @@
             }
         }
 
-        function simulationTick() {
-            state.cash += state.netIncome;
+        function dailyTick() {
+            if (state.gameSpeed === 0) return;
+
+            state.day++;
+
+            if (state.day > 30) {
+                state.day = 1;
+                state.month++;
+                
+                if (state.month > 12) {
+                    state.month = 1;
+                    state.year++;
+                }
+
+                monthlyFinancialBilling();
+            }
+
+            updateDateDisplay();
             recalculateInfrastructure();
         }
 
+        function monthlyFinancialBilling() {
+            state.spotPrice = Number((0.08 + Math.random() * 0.10).toFixed(2));
+
+            if (state.difficulty === 'hard' && Math.random() < 0.12 && !state.isBlackout) {
+                state.isBlackout = true;
+                state.blackoutTimer = 3;
+                logEvent("CRITICAL ALERT: MUNICIPAL POWER GRID BLACKOUT!", "alert");
+            } else if (state.isBlackout) {
+                state.blackoutTimer--;
+                if (state.blackoutTimer <= 0) {
+                    state.isBlackout = false;
+                    logEvent("Power Grid restored.", "success");
+                }
+            }
+
+            let rpTotal = 0;
+            Object.keys(state.hallsData).forEach(k => {
+                const h = state.hallsData[k];
+                for (let x = 0; x < state.hallGridSize; x++) {
+                    for (let y = 0; y < state.hallGridSize; y++) {
+                        const s = h.surfaceGrid[x][y];
+                        if (s) {
+                            if (s.type === 'rd_lab' && !s.damaged) rpTotal += ITEMS.rd_lab.rpGen;
+                            if (ITEMS[s.type].category === 'surface' && s.type !== 'rd_lab' && s.type !== 'junk_rack') {
+                                s.wear = Math.min(0.8, (s.wear || 0) + 0.03);
+                            }
+                        }
+                    }
+                }
+            });
+
+            state.rp += rpTotal;
+            state.cash += state.netIncome;
+
+            for (let i = state.activeContracts.length - 1; i >= 0; i--) {
+                const c = state.activeContracts[i];
+                c.duration--;
+                if (c.duration <= 0) {
+                    logEvent(`Contract fulfilled with ${c.client}! Bonus payout received.`, "success");
+                    state.cash += c.payout * 2;
+                    state.activeContracts.splice(i, 1);
+                }
+            }
+
+            logEvent(`Monthly Statement: Net Change ${state.netIncome >= 0 ? '+' : ''}$${state.netIncome.toLocaleString()}`, state.netIncome >= 0 ? 'success' : 'alert');
+        }
+
         function triggerRandomEvents() {
+            if (state.gameSpeed === 0) return;
+
             if (Math.random() < 0.25) {
                 const eventTypes = ['disaster', 'surge', 'maintenance'];
                 const selected = eventTypes[Math.floor(Math.random() * eventTypes.length)];
@@ -1101,7 +1608,7 @@
                 const ry = Math.floor(Math.random() * state.hallGridSize);
 
                 if (selected === 'disaster') {
-                    if (hall.surfaceGrid[rx][ry]) {
+                    if (hall.surfaceGrid[rx][ry] && hall.surfaceGrid[rx][ry].type !== 'junk_rack') {
                         hall.surfaceGrid[rx][ry].damaged = true;
                         logEvent(`DISASTER! Electrical Fire damaged rack at sector ${randomHallKey} (${rx}, ${ry})!`, "alert");
                     }
@@ -1137,7 +1644,9 @@
                 state = JSON.parse(saveData);
                 document.getElementById('new-game-modal').style.display = 'none';
                 setViewMode(state.viewMode);
+                updateDateDisplay();
                 recalculateInfrastructure();
+                setSpeed(state.gameSpeed);
                 logEvent("Saved game state loaded successfully.", "success");
             } catch (e) {
                 logEvent("Corrupted save file detected.", "alert");
@@ -1145,7 +1654,9 @@
         }
 
         function gameLoop() {
-            state.animTimer += 0.05;
+            if (state.gameSpeed > 0) {
+                state.animTimer += 0.05 * state.gameSpeed;
+            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (state.viewMode === 'region') {
@@ -1169,7 +1680,7 @@
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
 
-            if (state.dragStartTile && state.selectedItem) {
+            if (state.dragStartTile && state.selectedItem && state.gameSpeed > 0) {
                 const line = getLineTiles(state.dragStartTile, state.hoverTile);
                 const item = ITEMS[state.selectedItem];
 
@@ -1207,9 +1718,23 @@
             const { x, y } = state.hoverTile;
             const pos = gridToScreen(x, y);
 
-            if (state.selectedItem === 'upgrade') {
+            if (state.selectedItem === 'recycle') {
                 const surf = hall.surfaceGrid[x][y];
                 if (surf) {
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 16, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#10b981';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(surf.type === 'junk_rack' ? 'SALVAGE +$5,000' : 'RECYCLE TARGET', pos.x, pos.y - 15);
+                }
+            } else if (state.selectedItem === 'upgrade') {
+                const surf = hall.surfaceGrid[x][y];
+                if (surf && surf.type !== 'junk_rack') {
                     const h = 24 + ((surf.level || 1) - 1) * 6;
                     ctx.strokeStyle = '#3b82f6';
                     ctx.lineWidth = 3;
@@ -1329,11 +1854,9 @@
             for (let x = 0; x < state.hallGridSize; x++) {
                 for (let y = 0; y < state.hallGridSize; y++) {
                     const tile = hall.surfaceGrid[x][y];
-                    const util = hall.utilityGrid[x][y];
                     const pos = gridToScreen(x, y);
 
-                    // Visual utility connectors flowing into active racks
-                    if (tile && tile.active && !tile.damaged) {
+                    if (tile && tile.active && !tile.damaged && tile.type !== 'junk_rack') {
                         ctx.strokeStyle = '#38bdf8';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
@@ -1352,13 +1875,17 @@
                         const h = 24 + ((tile.level || 1) - 1) * 6;
                         let topColor = '#3b82f6', sideColor = '#1d4ed8';
 
-                        if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
-                        if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
-                        if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
+                        if (tile.type === 'junk_rack') { topColor = '#b91c1c'; sideColor = '#7f1d1d'; }
+                        else if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
+                        else if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
+                        else if (tile.type === 'quantum') { topColor = '#06b6d4'; sideColor = '#0891b2'; }
+                        else if (tile.type === 'rd_lab') { topColor = '#ec4899'; sideColor = '#be185d'; }
+                        else if (tile.type === 'generator') { topColor = '#f97316'; sideColor = '#c2410c'; }
+                        else if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
 
-                        if (tile.damaged) {
+                        if (tile.damaged && tile.type !== 'junk_rack') {
                             topColor = '#ef4444'; sideColor = '#991b1b';
-                        } else if (!tile.active && tile.type !== 'ups') {
+                        } else if (!tile.active && tile.type !== 'ups' && tile.type !== 'generator' && tile.type !== 'junk_rack') {
                             topColor = '#4b5563'; sideColor = '#1f2937';
                         }
 
@@ -1386,7 +1913,19 @@
                         ctx.fillStyle = topColor;
                         ctx.fill(); ctx.stroke();
 
-                        if (tile.active && !tile.damaged) {
+                        if (tile.type === 'junk_rack') {
+                            ctx.fillStyle = '#fef08a';
+                            ctx.font = 'bold 10px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('⚡ RECYCLE', pos.x, pos.y - h - 4);
+                        } else if (tile.wear && tile.wear > 0.2) {
+                            ctx.fillStyle = '#f59e0b';
+                            ctx.font = 'bold 9px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(`${Math.round(tile.wear * 100)}% wear`, pos.x, pos.y - h - 4);
+                        }
+
+                        if (tile.active && !tile.damaged && state.gameSpeed > 0) {
                             const pulse = Math.sin(state.animTimer * 5) * 0.5 + 0.5;
                             ctx.fillStyle = `rgba(52, 211, 153, ${0.4 + pulse * 0.6})`;
                             ctx.fillRect(pos.x - 4, pos.y + TILE_HEIGHT / 2 - h + 6, 3, 3);
@@ -1398,7 +1937,6 @@
             }
         }
 
-        // --- SUB-GRID AUTO-CONNECT & DUAL-TRACK PIPELINES ---
         function drawUtilityLayer() {
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
@@ -1408,17 +1946,14 @@
                     const util = hall.utilityGrid[x][y];
                     const pos = gridToScreen(x, y);
 
-                    // Dual parallel offsets so cooling & power never collide
                     const pOffX = 6, pOffY = -3;
                     const cOffX = -6, cOffY = 3;
 
-                    // 1. Render Auto-Connected Power Lines
                     if (util.power || util.nodeType === 'power_plant') {
                         const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'power');
                         drawConnectedPipe(pos.x + pOffX, pos.y + TILE_HEIGHT / 2 + pOffY, neighbors, util.damaged ? '#ef4444' : '#f59e0b', util.damaged ? '#991b1b' : '#b45309');
                         
-                        // Animated Flow Particle
-                        if (!util.damaged) {
+                        if (!util.damaged && state.gameSpeed > 0) {
                             const flow = (state.animTimer * 20) % 20;
                             ctx.fillStyle = '#fde68a';
                             ctx.beginPath();
@@ -1427,13 +1962,11 @@
                         }
                     }
 
-                    // 2. Render Auto-Connected Cooling Pipes
-                    if (util.cooling || util.nodeType === 'chiller') {
+                    if (util.cooling || util.nodeType === 'chiller' || util.nodeType === 'liquid_chiller') {
                         const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'cooling');
                         drawConnectedPipe(pos.x + cOffX, pos.y + TILE_HEIGHT / 2 + cOffY, neighbors, util.damaged ? '#ef4444' : '#06b6d4', util.damaged ? '#991b1b' : '#0891b2');
 
-                        // Animated Coolant Pulse
-                        if (!util.damaged) {
+                        if (!util.damaged && state.gameSpeed > 0) {
                             const flow = (state.animTimer * 15) % 20;
                             ctx.fillStyle = '#a5f3fc';
                             ctx.beginPath();
@@ -1442,7 +1975,6 @@
                         }
                     }
 
-                    // 3. Central Utility Stations
                     if (util.nodeType) {
                         ctx.beginPath();
                         ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 10, 0, Math.PI * 2);
@@ -1461,7 +1993,7 @@
                 if (nx < 0 || nx >= state.hallGridSize || ny < 0 || ny >= state.hallGridSize) return false;
                 const u = grid[nx][ny];
                 if (type === 'power') return u.power || u.nodeType === 'power_plant';
-                if (type === 'cooling') return u.cooling || u.nodeType === 'chiller';
+                if (type === 'cooling') return u.cooling || u.nodeType === 'chiller' || u.nodeType === 'liquid_chiller';
                 return false;
             };
 
@@ -1481,19 +2013,16 @@
             const lenX = TILE_WIDTH / 4;
             const lenY = TILE_HEIGHT / 4;
 
-            // Center hub
             ctx.beginPath();
             ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
             ctx.fillStyle = strokeColor;
             ctx.fill();
 
-            // Adjacency connections
             if (n.N) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + lenX, cy - lenY); ctx.stroke(); }
             if (n.S) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - lenX, cy + lenY); ctx.stroke(); }
             if (n.E) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + lenX, cy + lenY); ctx.stroke(); }
             if (n.W) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - lenX, cy - lenY); ctx.stroke(); }
 
-            // Default stub if standalone
             if (!n.N && !n.S && !n.E && !n.W) {
                 ctx.beginPath(); ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy); ctx.stroke();
             }
