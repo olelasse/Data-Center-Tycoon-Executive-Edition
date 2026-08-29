@@ -740,6 +740,54 @@
 
             if (state.selectedItem) {
                 const item = ITEMS[state.selectedItem];
+                
+                // Special Tool: Upgrade preview calculations
+                if (item.id === 'upgrade') {
+                    const surf = hall.surfaceGrid[x][y];
+                    if (surf) {
+                        const curLvl = surf.level || 1;
+                        const nextLvl = curLvl + 1;
+                        const baseItem = ITEMS[surf.type];
+                        const cost = item.cost;
+                        const affordable = state.cash >= cost;
+
+                        tooltip.innerHTML = `
+                            <strong>Upgrade Targeted Rack (${x}, ${y})</strong><br>
+                            Type: <strong>${baseItem.name}</strong><br>
+                            Level Upgrade: <span style="color:var(--accent-blue)">Lvl ${curLvl} ➔ Lvl ${nextLvl}</span><br>
+                            Power Req: ${baseItem.powerReq * curLvl}kW ➔ <strong>${baseItem.powerReq * nextLvl}kW</strong><br>
+                            Cooling Load: ${baseItem.coolingReq * curLvl}BTU ➔ <strong>${baseItem.coolingReq * nextLvl}BTU</strong><br>
+                            Yield: +$${baseItem.rev * curLvl}/mo ➔ <strong style="color:var(--accent-green)">+$${baseItem.rev * nextLvl}/mo</strong><br>
+                            Upgrade Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${cost}</span>
+                        `;
+                        return;
+                    } else {
+                        tooltip.innerHTML = `<strong>Upgrade Tool</strong><br><span style="color:var(--text-muted)">Hover over a rack to preview upgrade stats.</span>`;
+                        return;
+                    }
+                }
+
+                // Special Tool: Repair Preview
+                if (item.id === 'repair') {
+                    const surf = hall.surfaceGrid[x][y];
+                    const util = hall.utilityGrid[x][y];
+                    const needsRepair = (surf && surf.damaged) || util.damaged;
+
+                    if (needsRepair) {
+                        const affordable = state.cash >= item.cost;
+                        tooltip.innerHTML = `
+                            <strong style="color:var(--accent-amber)">Repair Target Locked (${x}, ${y})</strong><br>
+                            Component: <strong>${surf ? ITEMS[surf.type].name : 'Sub-grid Conduit'}</strong><br>
+                            Status: <span style="color:var(--accent-red)">DAMAGED / INOPERATIVE</span><br>
+                            Repair Cost: <span style="color:${affordable ? 'var(--accent-green)' : 'var(--accent-red)'}">$${item.cost}</span>
+                        `;
+                    } else {
+                        tooltip.innerHTML = `<strong>Repair Tool Active</strong><br><span style="color:var(--text-muted)">Tile is currently functioning normally.</span>`;
+                    }
+                    return;
+                }
+
+                // Standard Multi-Placement Tracker
                 let placeableCount = 0;
                 let runningCost = 0;
 
@@ -851,7 +899,7 @@
             });
 
             if (count > 0) {
-                logEvent(`Constructed ${count}x ${item.name}.`, "success");
+                logEvent(`Constructed/Updated ${count}x ${item.name}.`, "success");
             } else if (line.length > 0 && state.cash < item.cost) {
                 logEvent(`Insufficient capital to construct requested elements!`, "alert");
             }
@@ -1081,43 +1129,100 @@
                 }
             }
 
-            drawDragPreview();
+            drawTargetAndDragHighlights();
             requestAnimationFrame(gameLoop);
         }
 
-        function drawDragPreview() {
-            if (!state.dragStartTile || !state.hoverTile || !state.selectedItem || state.viewMode === 'region') return;
+        function drawTargetAndDragHighlights() {
+            if (state.viewMode === 'region' || !state.hoverTile) return;
 
-            const line = getLineTiles(state.dragStartTile, state.hoverTile);
-            const item = ITEMS[state.selectedItem];
+            const hall = state.hallsData[state.activeHallIndex];
+            if (!hall) return;
 
-            let runningCost = 0;
+            // Multi-placement line preview drag
+            if (state.dragStartTile && state.selectedItem) {
+                const line = getLineTiles(state.dragStartTile, state.hoverTile);
+                const item = ITEMS[state.selectedItem];
 
-            line.forEach((t, idx) => {
-                const pos = gridToScreen(t.x, t.y);
-                const isAffordable = (runningCost + item.cost) <= state.cash;
-                if (isAffordable) runningCost += item.cost;
+                let runningCost = 0;
 
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
-                ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
-                ctx.closePath();
+                line.forEach((t, idx) => {
+                    const pos = gridToScreen(t.x, t.y);
+                    const isAffordable = (runningCost + item.cost) <= state.cash;
+                    if (isAffordable) runningCost += item.cost;
 
-                ctx.fillStyle = isAffordable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.5)';
-                ctx.fill();
-                ctx.strokeStyle = isAffordable ? '#10b981' : '#ef4444';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                    ctx.lineTo(pos.x + TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT);
+                    ctx.lineTo(pos.x - TILE_WIDTH / 2, pos.y + TILE_HEIGHT / 2);
+                    ctx.closePath();
 
-                if (idx === line.length - 1) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 12px sans-serif';
+                    ctx.fillStyle = isAffordable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.5)';
+                    ctx.fill();
+                    ctx.strokeStyle = isAffordable ? '#10b981' : '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    if (idx === line.length - 1) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 12px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`x${line.length} ($${(item.cost * line.length).toLocaleString()})`, pos.x, pos.y - 10);
+                    }
+                });
+                return;
+            }
+
+            // Target Hover Highlight System for Repair / Upgrade Tools
+            const { x, y } = state.hoverTile;
+            const pos = gridToScreen(x, y);
+
+            if (state.selectedItem === 'upgrade') {
+                const surf = hall.surfaceGrid[x][y];
+                if (surf) {
+                    const h = 24 + ((surf.level || 1) - 1) * 6;
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 3;
+
+                    // Isometric selection box wrapper surrounding the 3D rack
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y - h - 4);
+                    ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2 - h);
+                    ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2 + 4);
+                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT + 4);
+                    ctx.lineTo(pos.x - TILE_WIDTH / 2 - 4, pos.y + TILE_HEIGHT / 2 + 4);
+                    ctx.lineTo(pos.x - TILE_WIDTH / 2 - 4, pos.y + TILE_HEIGHT / 2 - h);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#60a5fa';
+                    ctx.font = 'bold 11px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`x${line.length} ($${(item.cost * line.length).toLocaleString()})`, pos.x, pos.y - 10);
+                    ctx.fillText(`UPGRADE ➔ Lvl ${(surf.level || 1) + 1}`, pos.x, pos.y - h - 10);
                 }
-            });
+            } else if (state.selectedItem === 'repair') {
+                const surf = hall.surfaceGrid[x][y];
+                const util = hall.utilityGrid[x][y];
+                const isDamaged = (surf && surf.damaged) || util.damaged;
+
+                if (isDamaged) {
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y - 10);
+                    ctx.lineTo(pos.x + TILE_WIDTH / 2 + 4, pos.y + TILE_HEIGHT / 2);
+                    ctx.lineTo(pos.x, pos.y + TILE_HEIGHT + 10);
+                    ctx.lineTo(pos.x - TILE_WIDTH / 2 - 4, pos.y + TILE_HEIGHT / 2);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('REPAIR TARGET', pos.x, pos.y - 15);
+                }
+            }
         }
 
         function drawRegionMap() {
