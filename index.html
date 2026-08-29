@@ -391,11 +391,11 @@
                 <label>Game Mode & Scenario</label>
                 <select id="mode-select" class="select-input" onchange="updateScenarioDesc()">
                     <option value="sandbox">Endless Sandbox Mode</option>
-                    <option value="scenario_crisis">Challenge: Crisis Management (Fix Debt & Blackouts)</option>
+                    <option value="scenario_crisis" selected>Challenge: Crisis Management (Fix Debt & Salvage)</option>
                     <option value="scenario_arctic">Challenge: Arctic Green Tech (100% Clean Energy)</option>
                 </select>
                 <div id="scenario-desc" style="font-size:0.75rem; color:var(--accent-amber); margin-top:2px;">
-                    Standard tycoon setup. Build, expand, research, and monetize at your own pace.
+                    CRISIS: Start with -$15,000 debt. Use Recycle Tool on broken hardware to salvage cash!
                 </div>
             </div>
 
@@ -520,7 +520,7 @@
             <div id="tile-tooltip"></div>
 
             <div id="event-log">
-                <div class="log-entry">Facility initialized. Build conduits & connect infrastructure.</div>
+                <div class="log-entry">Facility initialized. Select Hall (2,2) to start.</div>
             </div>
         </div>
     </div>
@@ -550,7 +550,7 @@
 
         const ITEMS = {
             repair: { id: 'repair', name: 'Repair Tool', cost: 100, category: 'tool', desc: 'Fix damaged or broken components.' },
-            recycle: { id: 'recycle', name: 'Recycle Hardware', cost: 50, category: 'tool', desc: 'Scrap degraded hardware for 50% refund.' },
+            recycle: { id: 'recycle', name: 'Recycle Hardware', cost: 0, category: 'tool', desc: 'Scrap hardware/debris for high cash refunds!' },
             upgrade: { id: 'upgrade', name: 'Upgrade Node', cost: 500, category: 'tool', desc: 'Upgrade rack or utility capacity by +50%.' },
             demolish: { id: 'demolish', name: 'Demolish Tile', cost: 10, category: 'tool', desc: 'Clear a tile component (required to rebuild racks).' },
             
@@ -558,6 +558,7 @@
             
             server: { id: 'server', name: 'Standard Server Rack', cost: 800, powerReq: 10, coolingReq: 8, rev: 350, compute: 100, category: 'surface', desc: 'Standard compute rack.' },
             storage: { id: 'storage', name: 'Data Storage Array', cost: 600, powerReq: 5, coolingReq: 4, rev: 220, compute: 50, category: 'surface', desc: 'Low heat capacity revenue.' },
+            junk_rack: { id: 'junk_rack', name: 'Decommissioned Cluster', cost: 0, powerReq: 0, coolingReq: 0, rev: 0, compute: 0, category: 'surface', desc: 'Broken cluster. Recycle to get +$5,000 cash!' },
             ml_rack: { id: 'ml_rack', name: 'AI Supercluster', cost: 3200, powerReq: 40, coolingReq: 35, rev: 1400, compute: 500, category: 'surface', reqTech: 'gpu_clusters', desc: 'High density compute module.' },
             quantum: { id: 'quantum', name: 'Quantum Node', cost: 12000, powerReq: 120, coolingReq: 110, rev: 6500, compute: 2200, category: 'surface', reqTech: 'quantum_nodes', desc: 'Pinnacle compute tech.' },
             rd_lab: { id: 'rd_lab', name: 'R&D Lab Module', cost: 2500, powerReq: 20, coolingReq: 10, rpGen: 5, category: 'surface', desc: 'Generates monthly Research Points.' },
@@ -632,7 +633,7 @@
         function updateScenarioDesc() {
             const m = document.getElementById('mode-select').value;
             const d = document.getElementById('scenario-desc');
-            if (m === 'scenario_crisis') d.innerText = "CRISIS: Start with -$15,000 debt, damaged infrastructure, and frequent power blackouts!";
+            if (m === 'scenario_crisis') d.innerText = "CRISIS: Start with -$15,000 debt. Use Recycle Tool on broken hardware to salvage cash!";
             else if (m === 'scenario_arctic') d.innerText = "ARCTIC GREEN: 100% renewable mandate! Power costs +50%, but cooling costs -50%.";
             else d.innerText = "Standard tycoon setup. Build, expand, research, and monetize at your own pace.";
         }
@@ -654,15 +655,30 @@
 
             if (state.mode === 'scenario_crisis') {
                 const h = state.hallsData['2_2'];
-                h.surfaceGrid[2][2] = { type: 'server', level: 1, wear: 0.4, damaged: true, active: false };
-                h.utilityGrid[2][2].damaged = true;
+                
+                // Spawn 4 salvageable junk clusters worth $5,000 each
+                h.surfaceGrid[2][2] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+                h.surfaceGrid[2][3] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+                h.surfaceGrid[3][2] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+                h.surfaceGrid[3][3] = { type: 'junk_rack', level: 1, wear: 1.0, damaged: true, active: false };
+
+                // Pre-wire utility conduits
+                for (let i = 0; i < 6; i++) {
+                    h.utilityGrid[i][2].power = true;
+                    h.utilityGrid[i][2].cooling = true;
+                }
             }
 
             generateContractBoard();
             document.getElementById('new-game-modal').style.display = 'none';
             setViewMode('region');
             recalculateInfrastructure();
-            logEvent(`Ops Center launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
+            
+            if (state.mode === 'scenario_crisis') {
+                logEvent("CRISIS: Facilities stranded in debt! Enter Sector (2,2) & use RECYCLE TOOL on Decommissioned Clusters to claim cash!", "alert");
+            } else {
+                logEvent(`Ops Center launched in ${REGION_SETTINGS[state.region].name}. Initial Sector unlocked at (2,2).`, "success");
+            }
         }
 
         function initializeHallData(rx, ry) {
@@ -696,6 +712,7 @@
             Object.keys(ITEMS).forEach(key => {
                 const item = ITEMS[key];
                 
+                if (key === 'junk_rack') return; // Hide junk rack from build list
                 if (state.viewMode === 'region' && item.category !== 'region' && item.category !== 'tool') return;
                 if (state.viewMode === 'surface' && item.category !== 'surface' && item.category !== 'tool') return;
                 if (state.viewMode === 'utility' && item.category !== 'utility' && item.category !== 'tool') return;
@@ -1008,16 +1025,16 @@
                 if (item.id === 'recycle') {
                     const surf = hall.surfaceGrid[x][y];
                     if (surf) {
-                        const refund = Math.round(ITEMS[surf.type].cost * 0.5);
+                        const isJunk = surf.type === 'junk_rack';
+                        const refund = isJunk ? 5000 : Math.round(ITEMS[surf.type].cost * 0.5);
                         tooltip.innerHTML = `
                             <strong>Recycle Hardware (${x}, ${y})</strong><br>
                             Type: <strong>${ITEMS[surf.type].name}</strong><br>
-                            Wear Level: <span style="color:var(--accent-amber)">${Math.round((surf.wear || 0) * 100)}%</span><br>
-                            Scrap Refund: <strong style="color:var(--accent-green)">+$${refund}</strong>
+                            Salvage Refund: <strong style="color:var(--accent-green)">+$${refund.toLocaleString()} CASH</strong>
                         `;
                         return;
                     } else {
-                        tooltip.innerHTML = `<strong>Recycle Tool</strong><br><span style="color:var(--text-muted)">Hover over hardware to scrap for refund.</span>`;
+                        tooltip.innerHTML = `<strong>Recycle Tool</strong><br><span style="color:var(--text-muted)">Click on Decommissioned Clusters or Racks to scrap for CASH!</span>`;
                         return;
                     }
                 }
@@ -1102,8 +1119,9 @@
                 
                 if (surf) {
                     info += `• Surface: ${ITEMS[surf.type].name} (Lvl ${surf.level || 1})<br>`;
+                    if (surf.type === 'junk_rack') info += `<span style="color:var(--accent-amber)">⚡ RECYCLE THIS FOR +$5,000 CASH!</span><br>`;
                     if (surf.wear) info += `• Hardware Wear: <span style="color:var(--accent-amber)">${Math.round(surf.wear * 100)}%</span><br>`;
-                    if (surf.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair Tool</span><br>`;
+                    if (surf.damaged) info += `<span style="color:var(--accent-red)">⚠ DAMAGED! Select Repair or Recycle Tool</span><br>`;
                 }
                 
                 if (util.nodeType) info += `• Sub-Node: ${ITEMS[util.nodeType].name}<br>`;
@@ -1142,15 +1160,22 @@
 
             line.forEach(t => {
                 const { x, y } = t;
-                if (state.cash < item.cost && item.id !== 'demolish' && item.id !== 'recycle') return;
 
                 if (item.id === 'recycle') {
                     if (hall.surfaceGrid[x][y]) {
-                        state.cash += Math.round(ITEMS[hall.surfaceGrid[x][y].type].cost * 0.5);
+                        const isJunk = hall.surfaceGrid[x][y].type === 'junk_rack';
+                        const refund = isJunk ? 5000 : Math.round(ITEMS[hall.surfaceGrid[x][y].type].cost * 0.5);
+                        state.cash += refund;
                         hall.surfaceGrid[x][y] = null;
                         count++;
+                        logEvent(`Scrapped hardware for +$${refund.toLocaleString()} cash refund!`, "success");
                     }
-                } else if (item.id === 'repair') {
+                    return;
+                }
+
+                if (state.cash < item.cost && item.id !== 'demolish') return;
+
+                if (item.id === 'repair') {
                     const surf = hall.surfaceGrid[x][y];
                     const util = hall.utilityGrid[x][y];
                     if ((surf && surf.damaged) || util.damaged) {
@@ -1192,7 +1217,7 @@
                 logEvent(`Cannot place rack on occupied tiles! Demolish space first.`, "alert");
             }
 
-            if (count > 0) {
+            if (count > 0 && item.id !== 'recycle') {
                 logEvent(`Constructed/Processed ${count}x ${item.name}.`, "success");
             } else if (line.length > 0 && state.cash < item.cost && item.id !== 'recycle') {
                 logEvent(`Insufficient capital to construct requested elements!`, "alert");
@@ -1272,12 +1297,11 @@
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
                         const tile = hall.surfaceGrid[x][y];
-                        if (tile && !tile.damaged) {
+                        if (tile && !tile.damaged && tile.type !== 'junk_rack') {
                             const item = ITEMS[tile.type];
                             const lvl = tile.level || 1;
                             const wearPenalty = 1 - (tile.wear || 0);
 
-                            // Thermal Hotspot penalty in Hard Mode
                             let thermalPenalty = 1.0;
                             if (state.difficulty === 'hard' && y > 0 && hall.surfaceGrid[x][y - 1]) {
                                 thermalPenalty = 0.7;
@@ -1307,7 +1331,6 @@
             cDraw = Math.round(cDraw * reg.coolingMult);
             pDraw = Math.round(pDraw * reg.powerMult);
 
-            // SLA Compliance Penalty check
             let slaPenalties = 0;
             state.activeContracts.forEach(c => {
                 if (totalCompute >= c.reqCompute) {
@@ -1377,7 +1400,6 @@
             state.yearTick++;
             state.spotPrice = Number((0.08 + Math.random() * 0.10).toFixed(2));
 
-            // Random Grid Blackout Event in Hard Mode
             if (state.difficulty === 'hard' && Math.random() < 0.12 && !state.isBlackout) {
                 state.isBlackout = true;
                 state.blackoutTimer = 3;
@@ -1390,7 +1412,6 @@
                 }
             }
 
-            // Hardware Wear & RP Generation
             let rpTotal = 0;
             Object.keys(state.hallsData).forEach(k => {
                 const h = state.hallsData[k];
@@ -1399,8 +1420,8 @@
                         const s = h.surfaceGrid[x][y];
                         if (s) {
                             if (s.type === 'rd_lab' && !s.damaged) rpTotal += ITEMS.rd_lab.rpGen;
-                            if (state.yearTick % 6 === 0 && ITEMS[s.type].category === 'surface' && s.type !== 'rd_lab') {
-                                s.wear = Math.min(0.8, (s.wear || 0) + 0.03); // 3% degradation
+                            if (state.yearTick % 6 === 0 && ITEMS[s.type].category === 'surface' && s.type !== 'rd_lab' && s.type !== 'junk_rack') {
+                                s.wear = Math.min(0.8, (s.wear || 0) + 0.03);
                             }
                         }
                     }
@@ -1410,7 +1431,6 @@
             state.rp += rpTotal;
             state.cash += state.netIncome;
 
-            // Process SLA Contract Durations
             for (let i = state.activeContracts.length - 1; i >= 0; i--) {
                 const c = state.activeContracts[i];
                 c.duration--;
@@ -1438,7 +1458,7 @@
                 const ry = Math.floor(Math.random() * state.hallGridSize);
 
                 if (selected === 'disaster') {
-                    if (hall.surfaceGrid[rx][ry]) {
+                    if (hall.surfaceGrid[rx][ry] && hall.surfaceGrid[rx][ry].type !== 'junk_rack') {
                         hall.surfaceGrid[rx][ry].damaged = true;
                         logEvent(`DISASTER! Electrical Fire damaged rack at sector ${randomHallKey} (${rx}, ${ry})!`, "alert");
                     }
@@ -1556,11 +1576,11 @@
                     ctx.fillStyle = '#10b981';
                     ctx.font = 'bold 11px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText('RECYCLE TARGET', pos.x, pos.y - 15);
+                    ctx.fillText(surf.type === 'junk_rack' ? 'SALVAGE +$5,000' : 'RECYCLE TARGET', pos.x, pos.y - 15);
                 }
             } else if (state.selectedItem === 'upgrade') {
                 const surf = hall.surfaceGrid[x][y];
-                if (surf) {
+                if (surf && surf.type !== 'junk_rack') {
                     const h = 24 + ((surf.level || 1) - 1) * 6;
                     ctx.strokeStyle = '#3b82f6';
                     ctx.lineWidth = 3;
@@ -1682,7 +1702,7 @@
                     const tile = hall.surfaceGrid[x][y];
                     const pos = gridToScreen(x, y);
 
-                    if (tile && tile.active && !tile.damaged) {
+                    if (tile && tile.active && !tile.damaged && tile.type !== 'junk_rack') {
                         ctx.strokeStyle = '#38bdf8';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
@@ -1701,16 +1721,17 @@
                         const h = 24 + ((tile.level || 1) - 1) * 6;
                         let topColor = '#3b82f6', sideColor = '#1d4ed8';
 
-                        if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
-                        if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
-                        if (tile.type === 'quantum') { topColor = '#06b6d4'; sideColor = '#0891b2'; }
-                        if (tile.type === 'rd_lab') { topColor = '#ec4899'; sideColor = '#be185d'; }
-                        if (tile.type === 'generator') { topColor = '#f97316'; sideColor = '#c2410c'; }
-                        if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
+                        if (tile.type === 'junk_rack') { topColor = '#b91c1c'; sideColor = '#7f1d1d'; }
+                        else if (tile.type === 'storage') { topColor = '#10b981'; sideColor = '#047857'; }
+                        else if (tile.type === 'ml_rack') { topColor = '#8b5cf6'; sideColor = '#6d28d9'; }
+                        else if (tile.type === 'quantum') { topColor = '#06b6d4'; sideColor = '#0891b2'; }
+                        else if (tile.type === 'rd_lab') { topColor = '#ec4899'; sideColor = '#be185d'; }
+                        else if (tile.type === 'generator') { topColor = '#f97316'; sideColor = '#c2410c'; }
+                        else if (tile.type === 'ups') { topColor = '#f59e0b'; sideColor = '#b45309'; }
 
-                        if (tile.damaged) {
+                        if (tile.damaged && tile.type !== 'junk_rack') {
                             topColor = '#ef4444'; sideColor = '#991b1b';
-                        } else if (!tile.active && tile.type !== 'ups' && tile.type !== 'generator') {
+                        } else if (!tile.active && tile.type !== 'ups' && tile.type !== 'generator' && tile.type !== 'junk_rack') {
                             topColor = '#4b5563'; sideColor = '#1f2937';
                         }
 
@@ -1739,15 +1760,18 @@
                         ctx.fillStyle = topColor;
                         ctx.fill(); ctx.stroke();
 
-                        // Render Hardware Wear indicator overlay
-                        if (tile.wear && tile.wear > 0.2) {
+                        if (tile.type === 'junk_rack') {
+                            ctx.fillStyle = '#fef08a';
+                            ctx.font = 'bold 10px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('⚡ RECYCLE', pos.x, pos.y - h - 4);
+                        } else if (tile.wear && tile.wear > 0.2) {
                             ctx.fillStyle = '#f59e0b';
                             ctx.font = 'bold 9px sans-serif';
                             ctx.textAlign = 'center';
                             ctx.fillText(`${Math.round(tile.wear * 100)}% wear`, pos.x, pos.y - h - 4);
                         }
 
-                        // Animated Status LEDs
                         if (tile.active && !tile.damaged) {
                             const pulse = Math.sin(state.animTimer * 5) * 0.5 + 0.5;
                             ctx.fillStyle = `rgba(52, 211, 153, ${0.4 + pulse * 0.6})`;
@@ -1760,7 +1784,6 @@
             }
         }
 
-        // Sub-grid Auto-connect Parallel Dual-Track Utilities
         function drawUtilityLayer() {
             const hall = state.hallsData[state.activeHallIndex];
             if (!hall) return;
@@ -1773,7 +1796,6 @@
                     const pOffX = 6, pOffY = -3;
                     const cOffX = -6, cOffY = 3;
 
-                    // 1. Render Auto-Connected Power Lines
                     if (util.power || util.nodeType === 'power_plant') {
                         const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'power');
                         drawConnectedPipe(pos.x + pOffX, pos.y + TILE_HEIGHT / 2 + pOffY, neighbors, util.damaged ? '#ef4444' : '#f59e0b', util.damaged ? '#991b1b' : '#b45309');
@@ -1787,7 +1809,6 @@
                         }
                     }
 
-                    // 2. Render Auto-Connected Cooling Pipes
                     if (util.cooling || util.nodeType === 'chiller' || util.nodeType === 'liquid_chiller') {
                         const neighbors = getConnectedNeighbors(hall.utilityGrid, x, y, 'cooling');
                         drawConnectedPipe(pos.x + cOffX, pos.y + TILE_HEIGHT / 2 + cOffY, neighbors, util.damaged ? '#ef4444' : '#06b6d4', util.damaged ? '#991b1b' : '#0891b2');
@@ -1801,7 +1822,6 @@
                         }
                     }
 
-                    // 3. Central Utility Stations
                     if (util.nodeType) {
                         ctx.beginPath();
                         ctx.arc(pos.x, pos.y + TILE_HEIGHT / 2, 10, 0, Math.PI * 2);
